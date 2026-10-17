@@ -69,7 +69,7 @@ namespace Api.data.migrations
                     b.HasIndex("UUID")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("users");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

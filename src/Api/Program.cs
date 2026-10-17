@@ -1,5 +1,7 @@
 using Api.Config;
+using Api.Data;
 using Api.Middleware;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,15 @@ builder.Services.AddValidationConfiguration();
 builder.Services.AddMemoryCache();
 
 var app = builder.Build();
+
+// En Docker (o cuando se pide explícitamente) aplica las migraciones pendientes al arrancar,
+// para que `docker compose up` deje la base lista sin pasos manuales.
+if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 
 app.UseMiddleware<ErrorHandlingMiddleware>();
 

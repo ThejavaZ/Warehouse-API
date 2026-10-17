@@ -1,6 +1,100 @@
 @Api_HostAddress = http://localhost:5259
+@UserId = 1
 
-GET {{Api_HostAddress}}/weatherforecast/
+### Info de la aplicación
+GET {{Api_HostAddress}}/
 Accept: application/json
+
+### Listado de usuarios (sin filtros)
+GET {{Api_HostAddress}}/api/User
+Accept: application/json
+
+### Listado con búsqueda + estado activo + paginación
+GET {{Api_HostAddress}}/api/User?search=ana&isActive=true&page=1&pageSize=20&orderDesc=true
+Accept: application/json
+
+### Detalle de un usuario por id
+GET {{Api_HostAddress}}/api/User?id={{UserId}}
+Accept: application/json
+
+### Página fuera de rango (debe devolver items vacíos con TotalItems real)
+GET {{Api_HostAddress}}/api/User?page=99&pageSize=10
+Accept: application/json
+
+### PageSize inválido (400 ProblemDetails)
+GET {{Api_HostAddress}}/api/User?pageSize=0
+Accept: application/json
+
+### Usuario inexistente (404 ProblemDetails)
+GET {{Api_HostAddress}}/api/User?id=9999
+Accept: application/json
+
+### Crear usuario (201, sin password en la respuesta)
+POST {{Api_HostAddress}}/api/User
+Content-Type: application/json
+
+{
+  "name": "Ana Garcia",
+  "email": "ana.test@example.com",
+  "password": "Secret123!"
+}
+
+### Crear usuario inválido (400 ValidationProblemDetails)
+POST {{Api_HostAddress}}/api/User
+Content-Type: application/json
+
+{
+  "name": "A",
+  "email": "no-es-un-correo",
+  "password": "123"
+}
+
+### Correo duplicado (400 ProblemDetails, code = validation_error)
+POST {{Api_HostAddress}}/api/User
+Content-Type: application/json
+
+{
+  "name": "Otro Usuario",
+  "email": "ana.test@example.com",
+  "password": "Secret123!"
+}
+
+### Actualizar usuario (contraseña opcional)
+PUT {{Api_HostAddress}}/api/User/{{UserId}}
+Content-Type: application/json
+
+{
+  "name": "Ana G. Actualizada",
+  "email": "ana.test@example.com",
+  "password": ""
+}
+
+### Actualización parcial (misma semántica que PUT)
+PATCH {{Api_HostAddress}}/api/User/{{UserId}}
+Content-Type: application/json
+
+{
+  "name": "Ana Patch",
+  "email": "ana.test@example.com"
+}
+
+### Actualizar usuario inexistente (404 ProblemDetails)
+PUT {{Api_HostAddress}}/api/User/9999
+Content-Type: application/json
+
+{
+  "name": "Ghost",
+  "email": "ghost@example.com"
+}
+
+### Borrado lógico (204)
+DELETE {{Api_HostAddress}}/api/User/{{UserId}}
+
+### Borrar de nuevo (404, ya está dado de baja)
+DELETE {{Api_HostAddress}}/api/User/{{UserId}}
+
+### Swagger UI
+GET {{Api_HostAddress}}/swagger/index.html
+Accept: text/html
 
 ###

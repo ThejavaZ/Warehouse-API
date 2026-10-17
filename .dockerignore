@@ -1,0 +1,21 @@
+# Contexto de build mínimo: solo lo necesario para compilar la API
+
+**/.git
+**/.vs
+**/bin
+**/obj
+
+# El proyecto de pruebas no forma parte de la imagen
+src/Test
+
+# Archivos que la app no necesita dentro del contenedor
+README.md
+LICENSE
+global.json
+WarehouseApi.sln
+**/*.http
+**/*.user
+
+# Secretos: la cadena de conexión vive en user secrets / variables de entorno,
+# nunca en el repositorio, así que no hay nada que ocultar aquí.
+.env
