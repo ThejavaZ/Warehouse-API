@@ -1,10 +1,12 @@
+using Api.Common;
+
 namespace Api.Users;
 
 public interface IUserService
 {
-    Task<UserViewModel> GetUserByIdAsync(int id);
-    Task<IEnumerable<UserListViewModel>> GetAllUsersAsync();
-    Task<UserViewModel> CreateUserAsync(UserCreateDTO dto);
-    Task<UserViewModel> UpdateUserAsync(int id, UserUpdateDTO dto);
-    Task<bool> DeleteUserAsync(int id);
+    Task<UserViewModel> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<PagedResult<UserListViewModel>> GetAllUsersAsync(UserQuery query, CancellationToken cancellationToken = default);
+    Task<UserViewModel> CreateUserAsync(UserCreateDTO dto, CancellationToken cancellationToken = default);
+    Task<UserViewModel> UpdateUserAsync(int id, UserUpdateDTO dto, CancellationToken cancellationToken = default);
+    Task<bool> DeleteUserAsync(int id, CancellationToken cancellationToken = default);
 }

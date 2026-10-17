@@ -7,16 +7,16 @@ public class User
     [Key]
     public int Id { get; set; }
 
-    public Guid UUID { get; set; }
+    public Guid UUID { get; set; } = Guid.NewGuid();
 
     [MaxLength(50)]
-    public string? Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [MaxLength(100)]
-    public string? Email { get; set; }
+    public string Email { get; set; } = null!;
 
     [MaxLength(100)]
-    public string? Password { get; set; }
+    public string Password { get; set; } = null!;
 
     public bool IsActive { get; set; } = true;
 

@@ -1,217 +1,132 @@
+using Api.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Users;
 
+/// <summary>
+/// Endpoints de usuarios: listado paginado con filtros, detalle, alta, baja lógica y actualización.
+/// Las respuestas de error (400/404/500) se generan en ErrorHandlingMiddleware como ProblemDetails.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
-    private readonly ILogger<UserController> _logger;
 
-    public UserController(
-        IUserService userService,
-        ILogger<UserController> logger)
+    public UserController(IUserService userService)
     {
         _userService = userService;
-        _logger = logger;
     }
 
-    // GET: api/User
-    // GET: api/User/{id}
+    /// <summary>
+    /// Obtiene el listado paginado de usuarios, o el detalle de un usuario cuando se envía <c>id</c>.
+    /// Filtros disponibles: <c>search</c> (nombre o correo), <c>isActive</c>, <c>page</c>, <c>pageSize</c>, <c>orderDesc</c>.
+    /// </summary>
+    /// <response code="200">Listado paginado o detalle del usuario.</response>
+    /// <response code="400">Parámetros de paginación inválidos (ProblemDetails).</response>
+    /// <response code="404">No existe ningún usuario con el <c>id</c> indicado (ProblemDetails).</response>
+    /// <response code="500">Error inesperado (ProblemDetails, sin detalles internos).</response>
     [HttpGet]
-    public async Task<IActionResult> Get(
-        int? id = null)
+    [ProducesResponseType(typeof(PagedResult<UserListViewModel>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserViewModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Get([FromQuery] UserQuery query, CancellationToken cancellationToken)
     {
-        try
+        if (query.Id.HasValue)
         {
-            if (id.HasValue)
-            {
-                var user = await _userService.GetUserByIdAsync(id.Value);
-
-                return Ok(user);
-            }
-
-            var users = await _userService.GetAllUsersAsync();
-
-            return Ok(users);
+            var user = await _userService.GetUserByIdAsync(query.Id.Value, cancellationToken);
+            return Ok(user);
         }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "User not found.");
 
-            return NotFound(new
-            {
-                message = ex.Message
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "An error occurred while getting users.");
+        var pagedResult = await _userService.GetAllUsersAsync(query, cancellationToken);
 
-            return StatusCode(500, new
-            {
-                message = "An internal error occurred."
-            });
-        }
+        return Ok(pagedResult);
     }
 
-    // POST: api/User
+    /// <summary>
+    /// Crea un usuario. La contraseña se almacena como hash (nunca en texto plano) y no se devuelve en la respuesta.
+    /// </summary>
+    /// <response code="201">Usuario creado.</response>
+    /// <response code="400">Datos inválidos o correo ya registrado (ProblemDetails).</response>
+    /// <response code="500">Error inesperado (ProblemDetails).</response>
     [HttpPost]
+    [ProducesResponseType(typeof(UserViewModel), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Post(
-        [FromBody] UserCreateDTO dto)
+        [FromBody] UserCreateDTO dto,
+        CancellationToken cancellationToken)
     {
-        try
-        {
-            var user = await _userService.CreateUserAsync(dto);
+        var user = await _userService.CreateUserAsync(dto, cancellationToken);
 
-            return CreatedAtAction(
-                nameof(Get),
-                new { id = user.Id },
-                user);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Invalid user data.");
-
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "An error occurred while creating user.");
-
-            return StatusCode(500, new
-            {
-                message = "An internal error occurred."
-            });
-        }
+        return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
     }
 
-    // PUT: api/User/{id}
-    [HttpPut]
+    /// <summary>
+    /// Actualiza por completo un usuario existente. La contraseña es opcional: si se envía vacía, se conserva la actual.
+    /// </summary>
+    /// <response code="200">Usuario actualizado.</response>
+    /// <response code="400">Datos inválidos o correo ya registrado (ProblemDetails).</response>
+    /// <response code="404">Usuario no encontrado (ProblemDetails).</response>
+    /// <response code="500">Error inesperado (ProblemDetails).</response>
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(UserViewModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Put(
         int id,
-        [FromBody] UserUpdateDTO dto)
+        [FromBody] UserUpdateDTO dto,
+        CancellationToken cancellationToken)
     {
-        try
-        {
-            var user = await _userService.UpdateUserAsync(id, dto);
+        var user = await _userService.UpdateUserAsync(id, dto, cancellationToken);
 
-            return Ok(user);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "User not found.");
-
-            return NotFound(new
-            {
-                message = ex.Message
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Invalid user data.");
-
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "An error occurred while updating user {UserId}.",
-                id);
-
-            return StatusCode(500, new
-            {
-                message = "An internal error occurred."
-            });
-        }
+        return Ok(user);
     }
 
-    // PATCH: api/User/{id}
-    [HttpPatch]
+    /// <summary>
+    /// Actualización parcial con la misma semántica que PUT (el modelo es idéntico).
+    /// </summary>
+    /// <response code="200">Usuario actualizado.</response>
+    /// <response code="400">Datos inválidos o correo ya registrado (ProblemDetails).</response>
+    /// <response code="404">Usuario no encontrado (ProblemDetails).</response>
+    /// <response code="500">Error inesperado (ProblemDetails).</response>
+    [HttpPatch("{id:int}")]
+    [ProducesResponseType(typeof(UserViewModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Patch(
         int id,
-        [FromBody] UserUpdateDTO dto)
+        [FromBody] UserUpdateDTO dto,
+        CancellationToken cancellationToken)
     {
-        try
-        {
-            var user = await _userService.UpdateUserAsync(id, dto);
+        var user = await _userService.UpdateUserAsync(id, dto, cancellationToken);
 
-            return Ok(user);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "User not found.");
-
-            return NotFound(new
-            {
-                message = ex.Message
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Invalid user data.");
-
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "An error occurred while patching user {UserId}.",
-                id);
-
-            return StatusCode(500, new
-            {
-                message = "An internal error occurred."
-            });
-        }
+        return Ok(user);
     }
 
-    // DELETE: api/User/{id}
-    [HttpDelete]
-    public async Task<IActionResult> Delete(
-        int id)
+    /// <summary>
+    /// Realiza la baja lógica del usuario (SoftDelete); el registro permanece en la base de datos.
+    /// </summary>
+    /// <response code="204">Usuario eliminado lógicamente.</response>
+    /// <response code="404">Usuario no encontrado (ProblemDetails).</response>
+    /// <response code="500">Error inesperado (ProblemDetails).</response>
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        try
+        var deleted = await _userService.DeleteUserAsync(id, cancellationToken);
+
+        if (!deleted)
         {
-            var deleted = await _userService.DeleteUserAsync(id);
-
-            if (!deleted)
-            {
-                return NotFound(new
-                {
-                    message = $"User with ID {id} not found."
-                });
-            }
-
-            return NoContent();
+            throw new KeyNotFoundException($"User with ID {id} not found.");
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "An error occurred while deleting user {UserId}.",
-                id);
 
-            return StatusCode(500, new
-            {
-                message = "An internal error occurred."
-            });
-        }
+        return NoContent();
     }
 }

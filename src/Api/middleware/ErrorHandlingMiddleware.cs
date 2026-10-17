@@ -1,21 +1,22 @@
 using System.Text.Json;
+using Api.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Middleware;
 
 public class ErrorHandlingMiddleware
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorHandlingMiddleware> _logger;
-    private readonly IWebHostEnvironment _env;
 
     public ErrorHandlingMiddleware(
         RequestDelegate next,
-        ILogger<ErrorHandlingMiddleware> logger,
-        IWebHostEnvironment env)
+        ILogger<ErrorHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
-        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -24,74 +25,114 @@ public class ErrorHandlingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogInformation(
+                "Request {Path} was cancelled by the client.",
+                context.Request.Path);
+            throw;
+        }
         catch (DomainException ex)
         {
-            // Error de negocio conocido → 4xx
-            _logger.LogWarning(ex,
-                "Error de dominio [{Code}]: {Message}", ex.Code, ex.Message);
+            _logger.LogWarning(ex, "Domain error [{Code}] on {Path}", ex.Code, context.Request.Path);
 
-            await WriteErrorAsync(context, ex.HttpStatusCode, new ApiError
-            {
-                Code = ex.Code,
-                Message = ex.Message,
-                Field = ex.Field
-            });
+            await WriteProblemAsync(context, ex.StatusCode, ex.Code, ex.Message, ex.Field);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Resource not found on {Path}", context.Request.Path);
+
+            await WriteProblemAsync(context, StatusCodes.Status404NotFound, "not_found", ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument on {Path}", context.Request.Path);
+
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status400BadRequest,
+                "validation_error",
+                ex.Message,
+                ex.ParamName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access on {Path}", context.Request.Path);
+
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status403Forbidden,
+                "forbidden",
+                ex.Message);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Malformed request on {Path}", context.Request.Path);
+
+            await WriteProblemAsync(
+                context,
+                ex.StatusCode,
+                "bad_request",
+                "The request payload is invalid.");
         }
         catch (Exception ex)
         {
-            // Error inesperado → 500
-            _logger.LogError(ex, "Error no controlado en {Path}", context.Request.Path);
+            // Los detalles internos quedan solo en el log, nunca en la respuesta.
+            _logger.LogError(ex, "Unhandled exception on {Path}", context.Request.Path);
 
-            var error = ApiError.InternalError(
-                _env.IsDevelopment() ? ex.ToString() : null);
-
-            await WriteErrorAsync(context, 500, error);
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status500InternalServerError,
+                "internal_error",
+                "An unexpected error occurred.");
         }
     }
 
-    private static async Task WriteErrorAsync(HttpContext ctx, int statusCode, ApiError error)
+    private static async Task WriteProblemAsync(
+        HttpContext context,
+        int statusCode,
+        string code,
+        string detail,
+        string? field = null)
     {
-        ctx.Response.StatusCode = statusCode;
-        ctx.Response.ContentType = "application/json";
-
-        var json = JsonSerializer.Serialize(error, new JsonSerializerOptions
+        if (context.Response.HasStarted)
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
-        await ctx.Response.WriteAsync(json);
-    }
-
-    private class ApiError
-    {
-        public string Code { get; set; } = "internal_error";
-        public string Message { get; set; } = "An unexpected error occurred.";
-        public string? Field { get; set; }
-        public string? Details { get; set; }
-
-        public static ApiError InternalError(string? details = null)
-        {
-            return new ApiError
-            {
-                Code = "internal_error",
-                Message = "An unexpected error occurred.",
-                Details = details
-            };
+            return;
         }
-    }
 
-    private class DomainException : Exception
-    {
-        public string Code { get; }
-        public string? Field { get; }
-        public int HttpStatusCode { get; }
-
-        public DomainException(string code, string message, int httpStatusCode = 400, string? field = null)
-            : base(message)
+        var problem = new ProblemDetails
         {
-            Code = code;
-            HttpStatusCode = httpStatusCode;
-            Field = field;
+            Status = statusCode,
+            Title = GetTitle(statusCode),
+            Detail = detail,
+            Instance = context.Request.Path,
+            Type = $"https://httpstatuses.com/{statusCode}"
+        };
+
+        problem.Extensions["code"] = code;
+        problem.Extensions["traceId"] = context.TraceIdentifier;
+
+        if (!string.IsNullOrEmpty(field))
+        {
+            problem.Extensions["field"] = field;
         }
+
+        context.Response.Clear();
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/problem+json";
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
     }
+
+    private static string GetTitle(int statusCode) => statusCode switch
+    {
+        StatusCodes.Status400BadRequest => "Bad Request",
+        StatusCodes.Status401Unauthorized => "Unauthorized",
+        StatusCodes.Status403Forbidden => "Forbidden",
+        StatusCodes.Status404NotFound => "Not Found",
+        StatusCodes.Status409Conflict => "Conflict",
+        StatusCodes.Status413PayloadTooLarge => "Payload Too Large",
+        StatusCodes.Status500InternalServerError => "Internal Server Error",
+        _ => "Error"
+    };
 }

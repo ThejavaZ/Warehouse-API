@@ -13,6 +13,7 @@ builder.Services.AddApplicationServices();
 builder.Services.AddProvidersConfiguration();
 builder.Services.AddUploadConfiguration();
 builder.Services.AddControllers();
+builder.Services.AddValidationConfiguration();
 builder.Services.AddMemoryCache();
 
 var app = builder.Build();
@@ -41,3 +42,6 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.Run();
+
+// Expone el tipo Program a los proyectos de pruebas (WebApplicationFactory<T>).
+public partial class Program { }
