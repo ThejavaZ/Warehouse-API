@@ -170,9 +170,14 @@ GET /api/User?id=5
 POST /api/User
 { "name": "Ana Garcia", "email": "ana@test.com", "password": "Secret123!" }
 
-# Actualizar (contraseña opcional: si se omite o va vacía, se conserva la actual)
+# Actualizar (la contraseña es opcional: hay que OMITIR el campo para
+# conservar la actual; enviar "" produce un 400 por MinLength(8))
 PUT /api/User/5
-{ "name": "Ana G.", "email": "ana@test.com", "password": "" }
+{ "name": "Ana G.", "email": "ana@test.com" }
+
+# Cambiar la contraseña (mínimo 8 caracteres; revoca los refresh tokens del usuario)
+PUT /api/User/5
+{ "name": "Ana G.", "email": "ana@test.com", "password": "NuevaClave1!" }
 
 # Borrado lógico
 DELETE /api/User/5

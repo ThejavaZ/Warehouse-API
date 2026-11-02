@@ -145,15 +145,14 @@ Content-Type: application/json
   "password": "Secret123!"
 }
 
-### Actualizar usuario (contraseña opcional)
+### Actualizar usuario (contraseña omitida: se conserva la actual)
 PUT {{Api_HostAddress}}/api/User/{{UserId}}
 Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
   "name": "Ana G. Actualizada",
-  "email": "ana.test@example.com",
-  "password": ""
+  "email": "ana.test@example.com"
 }
 
 ### Actualización parcial (misma semántica que PUT)

@@ -68,7 +68,8 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Actualiza por completo un usuario existente. La contraseña es opcional: si se envía vacía, se conserva la actual.
+    /// Actualiza por completo un usuario existente. La contraseña es opcional: hay que omitir el campo para
+    /// conservar la actual (la cadena vacía produce un 400 por <c>MinLength(8)</c>).
     /// </summary>
     /// <response code="200">Usuario actualizado.</response>
     /// <response code="400">Datos inválidos o correo ya registrado (ProblemDetails).</response>
