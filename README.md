@@ -2,7 +2,17 @@
 
 API REST para gestión de almacén construida con **ASP.NET Core 8**, **EF Core** y **PostgreSQL**.
 
-El módulo disponible actualmente es **Users**: CRUD con paginación, filtros dinámicos, borrado lógico y contraseñas hasheadas.
+Módulos disponibles:
+
+| Módulo | Rutas | Descripción |
+|---|---|---|
+| **Auth** | `/api/Auth` | Registro, login JWT, renovación y revocación de tokens |
+| **Users** | `/api/User` | CRUD con paginación, filtros dinámicos, borrado lógico y contraseñas con BCrypt |
+| **Products** | `/api/Product` | CRUD con SKU único, precio decimal y los mismos patrones que Users |
+| **Warehouses** | `/api/Warehouse` | CRUD de almacenes (nombre, ubicación, estado) |
+| **Inventory** | `/api/InventoryItem` | Existencias por par almacén–producto y movimientos `restock`/`consume` |
+
+Todos los endpoints salvo `/api/Auth/register`, `/login`, `/refresh` y `/revoke` requieren un **access token Bearer** (ver [Autenticación](#autenticación-jwt)).
 
 ---
 
@@ -21,7 +31,7 @@ El módulo disponible actualmente es **Users**: CRUD con paginación, filtros di
 Levanta la API y una PostgreSQL 18 aislada, sin tocar tu base local:
 
 ```bash
-cp .env.example .env       # ajusta POSTGRES_PASSWORD
+cp .env.example .env       # ajusta POSTGRES_PASSWORD y AUTH_SECRET
 docker compose up --build
 ```
 
@@ -30,7 +40,7 @@ docker compose up --build
 - Las migraciones se aplican solas al arrancar (`Database:ApplyMigrationsOnStartup`).
 - El volumen `pgdata` persiste los datos; `docker compose down -v` lo elimina.
 
-> `.env` está en `.gitignore`: nunca se versiona. La cadena de conexión se arma en el compose a partir de esas variables.
+> `.env` está en `.gitignore`: nunca se versiona. La cadena de conexión y el secreto JWT se pasan al contenedor desde ese archivo (`ConnectionStrings__DefaultConnection`, `Auth__Secret`). **La API no arranca si falta `AUTH_SECRET`**: el compose lo exige con `${AUTH_SECRET:?...}`.
 
 ### Opción B — Manual
 
@@ -41,23 +51,29 @@ dotnet restore
 dotnet build
 ```
 
-#### 2. Configurar la cadena de conexión (fuera del código)
+#### 2. Configurar secretos (fuera del código)
 
-La cadena de conexión **no está en el repositorio**. En desarrollo se guarda con [User Secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets):
+La cadena de conexión y el secreto JWT **no están en el repositorio**. En desarrollo se guardan con [User Secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets):
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
   "Host=localhost;Port=5432;Database=warehouse_db;Username=<usuario>;Password=<password>" \
   --project src/Api
+
+# Secreto de firma JWT (mínimo 32 caracteres). Genera uno con: openssl rand -hex 32
+dotnet user-secrets set "Auth:Secret" "<valor de 32+ caracteres>" --project src/Api
 ```
 
-En producción usa una variable de entorno en lugar de user secrets:
+En producción usa variables de entorno en lugar de user secrets:
 
 ```bash
 export ConnectionStrings__DefaultConnection="Host=...;Database=...;Username=...;Password=..."
+export Auth__Secret="<valor de 32+ caracteres>"
 ```
 
-> **Nunca** subas credenciales a Git. Verifica con `git diff` que `appsettings.json` no contenga la cadena antes de commitear.
+> **Nunca** subas credenciales a Git. Verifica con `git diff` que `appsettings.json` no contenga ninguno de los dos valores antes de commitear.
+
+Si falta `Auth:Secret`, la API **no arranca**: lanza un error claro indicando cómo configurarlo.
 
 #### 3. Aplicar migraciones
 
@@ -77,9 +93,47 @@ dotnet run --project src/Api
 
 ---
 
+## Autenticación (JWT)
+
+Flujo de sesión (Sprint 11):
+
+```
+POST /api/Auth/register  ──►  usuario creado (201, sin tokens)
+POST /api/Auth/login     ──►  accessToken (JWT, 15 min) + refreshToken (7 días)
+        │
+        ├──  Authorization: Bearer <accessToken>  ──►  endpoints protegidos
+        │
+POST /api/Auth/refresh   ──►  rota el refresh token y devuelve uno nuevo + accessToken
+POST /api/Auth/revoke    ──►  logout (204); el refresh token queda invalidado
+```
+
+| Método | Ruta | Auth | Éxito | Descripción |
+|---|---|---|---|---|
+| `POST` | `/api/Auth/register` | pública | `201` `UserViewModel` | Crea un usuario (no emite tokens) |
+| `POST` | `/api/Auth/login` | pública | `200` `AuthViewModel` | Devuelve `accessToken`, `refreshToken`, `expiresIn`, `tokenType`, `userId`, `email` |
+| `POST` | `/api/Auth/refresh` | pública | `200` `AuthViewModel` | Canjea el refresh token por uno nuevo (rotación) |
+| `POST` | `/api/Auth/revoke` | pública | `204` | Revoca el refresh token (logout) |
+| `GET` | `/api/Auth/me` | Bearer | `200` `UserViewModel` | Perfil del usuario del token |
+
+Decisiones tomadas:
+
+- **Access token**: JWT HMAC-SHA256 con `Auth:Secret`, vida corta (`Auth:AccessTokenMinutes`, 15 por defecto). No guarda estado: no consulta la BD al validar.
+- **Refresh token**: 64 bytes aleatorios en base64url. En BD solo se guarda su **hash SHA-256**, por lo que una filtración de la tabla no permite usarlos.
+- **Rotación y detección de robo**: cada `refresh` revoca el token usado y emite otro. Reutilizar un token ya rotado devuelve `401` (señal de que alguien más lo tiene).
+- **Revocación adicional**: cambiar la contraseña (`PUT /api/User/{id}`) y darse de baja revocan todos los refresh tokens del usuario.
+- **Registro abierto**: se puede desactivar con `Auth:RegistrationEnabled=false` → `403` `registration_disabled`.
+- **Sin roles ni políticas**: hoy solo se distingue autenticado/no autenticado (`[Authorize]` plano). Los roles se añadirán cuando exista un requisito real.
+- **Retos y prohibiciones** responden ProblemDetails (`401` `unauthorized`, `403` `forbidden`) desde `AuthenticationConfiguration`, en vez del `401` vacío por defecto de JWT.
+
+> `Auth:Secret` es obligatorio (mínimo 32 caracteres) y **nunca se versiona**: user-secrets en desarrollo, `Auth__Secret` en despliegue. Ver [Puesta en marcha](#puesta-en-marcha).
+
+---
+
 ## Endpoints
 
-Base path: `/api/User`
+Base paths: `/api/User`, `/api/Product`, `/api/Warehouse`, `/api/InventoryItem`.
+
+### Users — `/api/User`
 
 | Método | Ruta | Descripción | Éxito |
 |---|---|---|---|
@@ -124,6 +178,79 @@ PUT /api/User/5
 DELETE /api/User/5
 ```
 
+### Products — `/api/Product`
+
+Mismo patrón que Users: `GET`, `GET?id=`, `POST`, `PUT/{id}`, `PATCH/{id}`, `DELETE/{id}`.
+
+| Parámetro | Tipo | Default | Descripción |
+|---|---|---|---|
+| `id` | `int?` | `null` | Detalle en vez de listado |
+| `search` | `string?` | `null` | Búsqueda case-insensitive por **nombre** o **SKU** |
+| `isActive` | `bool?` | `null` | Filtra por estado solo si se envía |
+| `page` / `pageSize` / `orderDesc` | — | — | Igual que en Users (`PagedQuery`) |
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `SKU` | `string` | Obligatorio, 2–50; **único** (índice filtrado por `SoftDelete`, igual que el correo) |
+| `Name` | `string` | Obligatorio, 2–100 |
+| `Description` | `string?` | Opcional, máx. 500 |
+| `Price` | `decimal` | Obligatorio, `0`–`999999999`; se almacena como `decimal(18,2)` (nunca `double`) |
+
+```bash
+# Crear
+POST /api/Product
+{ "sku": "SKU-0001", "name": "Teclado mecánico", "description": "TKL", "price": 49.90 }
+
+# SKU duplicado → 400 ProblemDetails (mismo tratamiento que el correo duplicado)
+GET /api/Product?search=tecl&isActive=true&orderDesc=false
+```
+
+### Warehouses — `/api/Warehouse`
+
+Mismo patrón que Users.
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `id` | `int?` | Detalle en vez de listado |
+| `search` | `string?` | Búsqueda case-insensitive por **nombre** o **ubicación** |
+| `isActive` | `bool?` | Filtra por estado solo si se envía |
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `Name` | `string` | Obligatorio, 2–100; **único** filtrado por `SoftDelete` |
+| `Location` | `string?` | Opcional, máx. 200 |
+
+```bash
+POST /api/Warehouse
+{ "name": "Almacén Norte", "location": "Nave 2, bahía B" }
+```
+
+### Inventory — `/api/InventoryItem`
+
+| Método | Ruta | Éxito | Descripción |
+|---|---|---|---|
+| `GET` | `/api/InventoryItem` | `200` `PagedResult<InventoryItemViewModel>` | Existencias; filtros `warehouseId`, `productId`, `page`, `pageSize`, `orderDesc` |
+| `POST` | `/api/InventoryItem/restock` | `200` `InventoryItemViewModel` | Entrada: **suma** `quantity`; crea la ficha si no existe |
+| `POST` | `/api/InventoryItem/consume` | `200` `InventoryItemViewModel` | Salida: **resta** `quantity` |
+
+```bash
+POST /api/InventoryItem/restock
+{ "warehouseId": 1, "productId": 1, "quantity": 25 }
+
+POST /api/InventoryItem/consume
+{ "warehouseId": 1, "productId": 1, "quantity": 5 }
+```
+
+Los movimientos **nunca** se hacen editando `Quantity` desde un `PUT` genérico: hay dos endpoints dedicados para que la entrada y la salida sean explícitas y auditables.
+
+Concurrencia y reglas de negocio:
+
+- **Saldo nunca negativo**: el consumo se ejecuta como `UPDATE ... WHERE Quantity >= @qty`; si no alcanza, no se modifica nada y responde `409` `insufficient_stock`.
+- **Upsert con reintento**: si dos peticiones crean la misma ficha a la vez, violan el índice único `(WarehouseId, ProductId)` y el repositorio reintenta la actualización (`409` `conflict` si el reintento también pierde).
+- **Cantidades**: `quantity ≥ 1` en los movimientos (validación de DTO) y `CHECK (Quantity >= 0)` en BD.
+- **Almacén/producto inactivos o dados de baja** → `400`; inexistentes → `404`.
+- FKs con `DeleteBehavior.Restrict`: un producto o almacén con existencias no se puede borrar en cascada.
+
 ---
 
 ## Manejo de errores
@@ -132,10 +259,12 @@ Todas las respuestas de error usan **ProblemDetails (RFC 7807)** con `Content-Ty
 
 | Código HTTP | Origen | `code` |
 |---|---|---|
-| `400` | Validación de DTO / parámetros de paginación | `validation_error` |
-| `404` | Usuario inexistente o dado de baja | `not_found` |
-| `403` | `UnauthorizedAccessException` | `forbidden` |
-| `409` | `DomainException` de conflicto | `conflict` |
+| `400` | Validación de DTO / parámetros de paginación / cantidad inválida | `validation_error` |
+| `401` | Sin token, token inválido o caducado, credenciales incorrectas, refresh token usado o revocado | `unauthorized`, `invalid_credentials` |
+| `403` | `UnauthorizedAccessException` o registro abierto desactivado | `forbidden`, `registration_disabled` |
+| `404` | Usuario, producto, almacén o ficha de existencias inexistente o dado de baja | `not_found` |
+| `409` | Conflicto de negocio: SKU/nombre duplicado, saldo insuficiente, carrera de concurrencia | `conflict`, `insufficient_stock` |
+| `429` | Límite de peticiones por IP superado (ver [Rate limiting](#rate-limiting)) | `rate_limit_exceeded` |
 | `500` | Excepción no controlada | `internal_error` |
 
 Ejemplo de respuesta `404`:
@@ -164,7 +293,30 @@ El manejo está centralizado en [`src/Api/middleware/ErrorHandlingMiddleware.cs`
   `BCryptPasswordHasher` implementa la abstracción `IPasswordHasher<User>` de ASP.NET Core Identity.
 - **Nunca se expone `Password`**: ni en `UserViewModel` ni en `UserListViewModel` (verificado por pruebas).
 - **Correos únicos**: índice único en `Email` **filtrado** por `SoftDelete IS NULL`, de modo que un correo dado de baja puede reutilizarse pero no duplicarse mientras esté activo.
-- **Autenticación/Autorización**: Identity está registrado (`IdentityConfiguration`) y Swagger trae el esquema `Bearer` listo, pero aún **no hay endpoints de login** ni políticas aplicadas. Ese es el siguiente paso antes de exponer operaciones privadas.
+- **Autenticación/Autorización**: login y renovación con **JWT** (módulo `auth/`), refresh tokens rotatorios guardados solo como hash y `[Authorize]` en todos los endpoints salvo los públicos de `/api/Auth`. Swagger trae el esquema `Bearer` listo para probarlos desde la UI.
+
+### CORS
+
+Configurado en `CorsConfiguration` según el entorno:
+
+- **Development**: cualquier origen (`AllowAnyOrigin`), métodos y cabeceras.
+- **Resto de entornos**: solo los orígenes de `Cors:AllowedOrigins`. Si la lista está **vacía**, no se admite ningún origen externo (más seguro que `AllowAll`) y el arranque escribe un aviso en el log.
+
+```bash
+export Cors__AllowedOrigins="https://app.example.com,https://admin.example.com"
+```
+
+### Rate limiting
+
+Middleware nativo de .NET 8 (`RateLimitConfiguration`), ventana fija por dirección IP, con **contadores separados** para `/api/Auth` y para el resto (los intentos de login no consumen la cuota general):
+
+| Clave | Default | Uso |
+|---|---|---|
+| `RateLimit:PermitLimit` | `100` | Peticiones por ventana en el resto de rutas |
+| `RateLimit:AuthPermitLimit` | `10` | Peticiones por ventana en `/api/Auth` |
+| `RateLimit:WindowSeconds` | `60` | Duración de la ventana |
+
+Al superarlo responde `429` con ProblemDetails (`code = rate_limit_exceeded`) y cabecera `Retry-After`.
 
 ### Validación
 
@@ -185,29 +337,35 @@ Warehouse-API/
 ├── src/
 │   ├── Api/
 │   │   ├── Program.cs                    # Pipeline y composición
-│   │   ├── config/                       # Configuración por capas (BD, CORS, Swagger, Identity, validación…)
+│   │   ├── Api.http                      # Ejemplos de peticiones para REST Client
+│   │   ├── config/                       # BD, Auth, CORS, RateLimit, Swagger, Identity, validación…
 │   │   ├── Common/                       # PagedQuery, PagedResult, DomainException
 │   │   ├── middleware/
 │   │   │   └── ErrorHandlingMiddleware.cs  # ProblemDetails global
 │   │   ├── security/
 │   │   │   └── BCryptPasswordHasher.cs    # IPasswordHasher<User> con BCrypt
-│   │   ├── data/
-│   │   │   ├── AppDbContext.cs
-│   │   │   ├── AppDbContextDesignTimeFactory.cs
-│   │   │   └── migrations/
-│   │   └── users/
-│   │       ├── UserController.cs          # HTTP, sin try/catch
-│   │       ├── UserService.cs             # Reglas de negocio + mapeo
-│   │       ├── UserRepository.cs          # Consultas IQueryable + EF Core
-│   │       ├── interfaces/                # IUserService, IUserRepository
-│   │       └── models/                    # Entity, DTOs, Query, ViewModels
+│   │   ├── auth/                         # Sprint 11: login/refresh JWT
+│   │   │   ├── AuthController.cs         # register, login, refresh, revoke, me
+│   │   │   ├── AuthService.cs            # Reglas de sesión y rotación de tokens
+│   │   │   ├── JwtTokenService.cs        # Firma de access tokens + refresh tokens
+│   │   │   ├── RefreshTokenRepository.cs # Persistencia y revocación
+│   │   │   ├── AuthOptions.cs            # Sección "Auth" de la configuración
+│   │   │   ├── interfaces/
+│   │   │   └── models/                   # LoginDTO, RefreshTokenDTO, AuthViewModel, RefreshToken
+│   │   ├── users/                        # Módulo Users (el de aprendizaje)
+│   │   ├── products/                     # Sprint 13
+│   │   ├── warehouses/                   # Sprint 14
+│   │   ├── inventory/                    # Sprint 14: existencias y movimientos
+│   │   └── data/
+│   │       ├── AppDbContext.cs
+│   │       ├── AppDbContextDesignTimeFactory.cs
+│   │       └── migrations/
 │   └── Test/
-│       ├── UserServiceTests.cs            # Reglas de negocio
-│       ├── UserRepositoryTests.cs         # Consultas contra SQLite en memoria
-│       ├── ErrorHandlingMiddlewareTests.cs
-│       ├── ValidationTests.cs
-│       ├── BCryptPasswordHasherTests.cs
-│       └── Integration/                   # WebApplicationFactory + SQLite
+│       ├── *Tests.cs                     # Unitarios: services, repos (SQLite), middleware, auth
+│       └── Integration/                  # WebApplicationFactory + SQLite
+│           ├── IntegrationTestBase.cs    # Registro/login/Bearer y limpieza de BD
+│           ├── WarehouseApiFactory.cs    # Host en memoria con Auth:Secret de prueba
+│           └── *ApiTests.cs              # Auth, User, Product, Warehouse, InventoryItem
 ```
 
 ### Flujo de una petición
@@ -240,13 +398,14 @@ Controller  →  Service  →  Repository  →  EF Core  →  PostgreSQL
 dotnet test
 ```
 
-**71 pruebas** con NUnit. Cubren:
+**188 pruebas** con NUnit, sin advertencias de compilación. Cubren:
 
-- Reglas del `UserService` (hash, correos duplicados, mapeo, ausencia de `Password` en ViewModels).
-- Consultas del repositorio contra **SQLite en memoria** (filtros combinados, paginación, borrado lógico, índice único de correo).
-- `ErrorHandlingMiddleware` → 400/403/404/409/500 y ausencia de detalles internos en 500.
-- Validaciones de Data Annotations (incluidos límites de paginación).
-- **Integración HTTP** con `WebApplicationFactory`: 200/201/204/400/404 reales.
+- **Unitarias — servicios**: `UserService`, `ProductService`, `WarehouseService`, `InventoryService`, `AuthService` (login, registro, rotación y revocación de refresh tokens) y `JwtTokenService` (firma, vida del token, hash de refresh tokens).
+- **Unitarias — repositorios contra SQLite en memoria**: paginación y filtros de Users/Products, índice único filtrado por `SoftDelete`, y los `UPDATE` condicionales de inventario (`WHERE Quantity >= @qty`) junto con el reintento en carrera por el índice `(WarehouseId, ProductId)`.
+- **Unitarias — infraestructura**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos), validaciones de Data Annotations y `BCryptPasswordHasher`.
+- **Integración HTTP** con `WebApplicationFactory` + SQLite en memoria: `AuthApiTests`, `UserApiTests`, `ProductApiTests`, `WarehouseApiTests` e `InventoryApiTests`. Cubren el flujo completo de sesión (register → login → llamada autenticada → refresh con rotación → revoke), `401` sin token y con token manipulado, `400/404/409` de cada módulo y los movimientos de inventario.
+
+La base común (`IntegrationTestBase`) arranca la API, limpia la BD entre pruebas y monta el Bearer; `WarehouseApiFactory` inyecta un `Auth:Secret` en memoria y sube los límites de rate limiting para que la suite no se corte sola.
 
 ---
 
@@ -254,10 +413,10 @@ dotnet test
 
 Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el código:
 
-- Parámetros de `UserQuery`
-- Códigos de estado por endpoint (`200`, `201`, `204`, `400`, `404`, `500`)
+- Parámetros de consulta de cada módulo (`UserQuery`, `ProductQuery`, `WarehouseQuery`, `InventoryQuery`)
+- Códigos de estado por endpoint (`200`, `201`, `204`, `400`, `401`, `403`, `404`, `409`, `429`, `500`)
 - Esquemas `ProblemDetails` / `ValidationProblemDetails`
-- Esquema de seguridad `Bearer` (JWT) preparado para cuando exista autenticación
+- Esquema de seguridad `Bearer` (JWT) **activo**: desde Swagger UI se puede pulsar *Authorize*, pegar el access token y probar cualquier endpoint protegido
 
 ---
 
@@ -265,7 +424,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 
 > **Cómo leerlo**: `[x]` = hecho y verificado, `[ ]` = pendiente. Los comentarios explican el estado real y las decisiones tomadas, para que este documento sea útil al retomar el proyecto dentro de un mes.
 >
-> **Estado global hoy**: módulo Users completo (CRUD, paginación, filtros, errores centralizados, contraseñas con BCrypt, 71 pruebas) + Docker + documentación. Lo que falta de Users es **autenticación (JWT)**; después toca **Products** y **Warehouses**.
+> **Estado global hoy**: los cinco módulos están implementados y documentados — **Auth** (JWT con refresh token rotatorio), **Users**, **Products**, **Warehouses** e **Inventory** (restock/consume con concurrencia) — más CORS por entorno, rate limiting y **188 pruebas en verde** con compilación sin advertencias. Siguen abiertos solo los ítems que dependen de métricas o requisitos reales (Sprint 15 y el `SortBy`/`fields` del Sprint 8).
 
 ### Fase 1 — Fundamentos y estructura
 
@@ -405,15 +564,15 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 #### Sprint 11. Seguridad y autenticación
 *Objetivo: credenciales protegidas y acceso controlado.*
 
-- [x] Integración User/Identity revisada — decisión: no fusionar; `User` es la entidad de negocio e Identity queda disponible para el login futuro.
+- [x] Integración User/Identity revisada — decisión: no fusionar; `User` es la entidad de negocio e Identity queda disponible como base (aporta `IPasswordHasher<User>` y el registro de esquemas de autenticación).
 - [x] Nunca contraseñas en texto plano — **resuelto**: `BCryptPasswordHasher` (`IPasswordHasher<User>`, work factor 11, salt integrado). Nota del roadmap original sobre "contraseñas en texto plano" → ya no aplica.
 - [x] Identity para gestionar credenciales/hashes — se usa su abstracción `IPasswordHasher<User>`; `AddIdentity` registrado como base.
-- [x] Secretos fuera del repositorio — User Secrets + `.env` (gitignored).
+- [x] Secretos fuera del repositorio — User Secrets + `.env` (gitignored); ahora también `Auth:Secret` / `AUTH_SECRET`.
 - [x] Revisar campos expuestos — `Password` nunca sale en ViewModels.
-- [ ] Configurar autenticación real (JWT: login/refresh) — pendiente; Swagger ya expone el esquema `Bearer` listo para cuando exista.
-- [ ] Proteger endpoints con roles/políticas — pendiente; hoy todos los endpoints son públicos (aceptable mientras no haya datos sensibles de producción).
-- [ ] Revisar CORS para producción — hoy `AllowAll` (solo válido en dev); debe restringirse a orígenes conocidos antes de desplegar.
-- [ ] Rate limiting — pendiente; evaluar `AspNetCoreRateLimit` o el middleware nativo de .NET 8 cuando haya usuarios reales.
+- [x] Configurar autenticación real (JWT: login/refresh) — **hecho**: módulo `auth/` con `POST /api/Auth/register|login|refresh|revoke` y `GET /me`. Access token HMAC-SHA256 de 15 min + refresh token opaco de 7 días guardado como hash SHA-256, con **rotación** (reutilizar un token usado → `401`) y revocación al cambiar la contraseña. El `Auth:Secret` es obligatorio y el arranque falla sin él.
+- [x] Proteger endpoints con roles/políticas — **hecho (alcance acordado)**: `[Authorize]` en `User`, `Product`, `Warehouse` e `InventoryItem`; `/api/Auth/{register,login,refresh,revoke}` públicas. Sin roles: solo autenticado/no autenticado, hasta que exista un requisito real. Nota: `AddIdentity` fija el esquema por defecto a la cookie `Identity.Application`; `AuthenticationConfiguration` lo anula a `Bearer` (si no, el reto devolvía `401` pero la autenticación se resolvía contra la cookie y todo caía en `401`).
+- [x] Revisar CORS para producción — **hecho**: `AllowAll` solo en Development; en el resto solo `Cors:AllowedOrigins` (vacío = ningún origen externo + aviso en el log al arrancar). Configurable con `Cors__AllowedOrigins`.
+- [x] Rate limiting — **hecho** con el middleware nativo de .NET 8: ventana fija por IP, contador aparte para `/api/Auth` (10/min por defecto) frente al general (100/min), `429` con ProblemDetails `rate_limit_exceeded` y cabecera `Retry-After`. Ajustable con la sección `RateLimit`.
 
 #### Sprint 12. Pruebas automatizadas
 *Objetivo: detectar rotos sin depender de pruebas manuales.*
@@ -433,41 +592,41 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 #### Sprint 13. Módulo Products
 *Objetivo: administrar productos del inventario.*
 
-- [ ] Definir entidad `Product` — propiedades mínimas: `SKU`, `Name`, `Description?`, `Price`, `IsActive`, timestamps y `SoftDelete` (mismas convenciones que `User`).
-- [ ] Configurar restricciones y tipos — `SKU` único (índice filtrado por `SoftDelete`, igual que `Email`), precio con precisión decimal (no `double`).
-- [ ] Crear DTOs y ViewModels — `ProductCreateDTO`, `ProductUpdateDTO`, `ProductViewModel`, `ProductListViewModel`; `ProductQuery : PagedQuery`.
-- [ ] Implementar Repository, Service y Controller — reutilizando el patrón de Users.
-- [ ] CRUD completo — mismos códigos HTTP y ProblemDetails que Users.
-- [ ] Paginación, búsqueda, filtros y orden — `Search` por nombre/SKU, filtro por estado, reutilizando `PagedQuery`.
-- [ ] Validar SKU único — Service + índice en BD, mismo tratamiento que el correo.
-- [ ] Migración y pruebas — nueva migración; suite de pruebas equivalente a la de Users.
+- [x] Definir entidad `Product` — `SKU`, `Name`, `Description?`, `Price`, `IsActive`, timestamps y `SoftDelete`, con las mismas convenciones que `User`.
+- [x] Configurar restricciones y tipos — `SKU` único (índice filtrado por `SoftDelete`, igual que `Email`) y `Price` con `decimal(18,2)` (`HasPrecision`), nunca `double`.
+- [x] Crear DTOs y ViewModels — `ProductCreateDTO`, `ProductUpdateDTO`, `ProductViewModel`, `ProductListViewModel` y `ProductQuery : PagedQuery`.
+- [x] Implementar Repository, Service y Controller — mismo patrón de capas que Users, sin `try/catch` en el controlador.
+- [x] CRUD completo — mismos códigos HTTP y ProblemDetails que Users (`200/201/204/400/404`).
+- [x] Paginación, búsqueda, filtros y orden — `Search` por nombre/SKU, filtro `IsActive`, `PagedQuery` reutilizado.
+- [x] Validar SKU único — Service (→ `400` `validation_error`) + índice filtrado en BD, mismo tratamiento que el correo.
+- [x] Migración y pruebas — migración `20261101051548_AddProductsWarehousesAndInventory`; `ProductServiceTests`, `ProductRepositoryTests` (SQLite) y `ProductApiTests`.
 
 #### Sprint 14. Módulos Warehouses e inventario
 *Objetivo: representar dónde están los productos y cuánto hay.*
 
-- [ ] Definir entidad `Warehouse` — nombre, ubicación/descripción, `IsActive`, timestamps.
-- [ ] Relaciones almacén–producto — entidad intermedia `InventoryItem` (decisión tomada de antemano: tabla puente explícita, no relación many-to-many oculta, para poder poner cantidad y auditoría).
-- [ ] Representar cantidad disponible — `Quantity` entero ≥ 0 con validación; nunca negativo.
-- [ ] Reglas contra cantidades inválidas — validación en Service antes de `SaveChangesAsync`.
-- [ ] Consultas de existencias — por producto y por almacén, con paginación si crece.
-- [ ] Operaciones de entrada/salida de inventario — endpoints dedicados (p. ej. `POST /api/InventoryItem/restock` y `/consume`), no editar `Quantity` a mano desde un PUT genérico.
-- [ ] Concurrencia — evaluar `UPDATE ... WHERE` condicional o tokens de concurrencia para evitar dos retiros simultáneos que dejen saldo negativo.
-- [ ] Pruebas de movimientos — cubrir saldo resultante, operaciones inválidas y, si se implementa, la condición de carrera.
+- [x] Definir entidad `Warehouse` — `Name` (único filtrado), `Location?`, `IsActive`, timestamps y `SoftDelete`.
+- [x] Relaciones almacén–producto — entidad intermedia `InventoryItem` (tabla puente explícita, no many-to-many oculta, para poder guardar cantidad y auditoría); FKs con `DeleteBehavior.Restrict`.
+- [x] Representar cantidad disponible — `Quantity` entero con `CHECK (Quantity >= 0)` en BD; nunca negativo.
+- [x] Reglas contra cantidades inválidas — validación en el DTO (`Range(1, …)` en los movimientos) y en el Service antes de `SaveChangesAsync`; almacén/producto inactivo → `400`, inexistente → `404`.
+- [x] Consultas de existencias — `GET /api/InventoryItem` con filtros `warehouseId` y `productId`, paginación y nombres/SKU resueltos en la respuesta.
+- [x] Operaciones de entrada/salida de inventario — `POST /api/InventoryItem/restock` y `/consume`; `Quantity` no se edita desde un `PUT` genérico.
+- [x] Concurrencia — `ExecuteUpdateAsync` condicional (`UPDATE … WHERE Quantity >= @qty`) para que dos retiros simultáneos no dejen saldo negativo, e upsert con reintento si dos peticiones crean la misma ficha a la vez (índice único `(WarehouseId, ProductId)` → `409`).
+- [x] Pruebas de movimientos — saldo resultante, saldo insuficiente (`409` `insufficient_stock`), ficha inexistente (`404`), cantidad inválida (`400`) y carrera de actualización en `InventoryRepositoryTests` (SQLite) + `InventoryApiTests`.
 
 #### Sprint 15. Documentación, rendimiento y preparación para crecer
 *Objetivo: primera versión mantenible por otra persona.*
 
 - [x] Documentar endpoints con OpenAPI — Swagger con comentarios XML generados desde el código.
-- [x] Ejemplos de peticiones y respuestas — en `src/Api/Api.http` y en este README.
-- [x] Documentar códigos de error — tabla de ProblemDetails en la sección de Manejo de errores.
-- [ ] Documentar autenticación — pendiente hasta que exista JWT (Sprint 11).
-- [x] Revisar índices de PostgreSQL — `Email` único filtrado, `UUID` único.
-- [x] Revisar unicidad e integridad referencial — unicidad resuelta; integridad referencial cuando existan relaciones (Sprint 14).
-- [x] `AsNoTracking()` en lecturas — aplicado en todos los `Get*` del Repository.
+- [x] Ejemplos de peticiones y respuestas — en `src/Api/Api.http` (Auth, Users, Products, Warehouses, Inventory) y en este README.
+- [x] Documentar códigos de error — tabla de ProblemDetails en la sección de Manejo de errores (incluidos `401`, `409` y `429`).
+- [x] Documentar autenticación — sección [Autenticación (JWT)](#autenticación-jwt) con el flujo completo, decisiones tomadas y ejemplo de uso; `Api.http` incluye register/login/me/refresh/revoke.
+- [x] Revisar índices de PostgreSQL — `Email`, `SKU` y `Name` únicos filtrados por `SoftDelete`; `UUID` únicos; `(WarehouseId, ProductId)` único en inventario; FKs indexadas (`UserId`, `ProductId`, `WarehouseId`).
+- [x] Revisar unicidad e integridad referencial — unicidad resuelta con índices filtrados; integridad referencial con `DeleteBehavior.Restrict` en `InventoryItem` (no se puede borrar en cascada un producto/almacén con existencias) y `Cascade` en `refresh_tokens`.
+- [x] `AsNoTracking()` en lecturas — aplicado en todos los `Get*` de los repositories.
 - [x] `CancellationToken` en operaciones asíncronas — propagado desde el Controller hasta `SaveChangesAsync`.
-- [x] Revisar SQL generado por EF Core — verificado durante el desarrollo (conteo antes de paginar, sin materialización prematura).
-- [ ] Medir rendimiento antes de optimizar — pendiente; no hay métricas reales todavía, y no debe optimizarse a ciegas.
-- [ ] Configurar logs y variables de entorno para producción — pendiente; falta definir nivel de logs y secretos del entorno real de despliegue.
+- [x] Revisar SQL generado por EF Core — verificado durante el desarrollo (conteo antes de paginar, sin materialización prematura; `ExecuteUpdateAsync` condicional para inventario).
+- [ ] Medir rendimiento antes de optimizar — **deferido a propósito**: no hay métricas ni volumen real que justifique optimizar, y hacerlo a ciegas solo añadiría complejidad. Revisar cuando existan flujos reales (candidatos: `GET /api/InventoryItem` con muchos almacenes y `search` en listados grandes).
+- [ ] Configurar logs y variables de entorno para producción — **parcial**: las variables ya están definidas, cableadas y documentadas (`ConnectionStrings__DefaultConnection`, `Auth__Secret` con arranque obligatorio, `Cors__AllowedOrigins`, `Database__ApplyMigrationsOnStartup`, sección `RateLimit`) y `appsettings.json` fija `Default: Information` / `Microsoft.AspNetCore: Warning`. Falta elegir el **destino** de los logs (consola, Seq, ELK, servicio de la nube) cuando exista el entorno real de despliegue; no se decide a ciegas.
 - [x] Instrucciones para ejecutar desde cero — README con Opción A (Docker) y Opción B (manual).
 
 ### Temas de arquitectura para después
@@ -496,6 +655,10 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 
 ### Siguiente paso recomendado
 
-1. **Completar Sprint 11** — implementar login/refresh con JWT y proteger los endpoints de Users.
-2. **Sprint 13 (Products)** — reutilizar todo el patrón ya probado en un recurso nuevo.
-3. **Sprint 14 (Warehouses/Inventory)** — primera relación real entre entidades y primer problema de concurrencia.
+Los sprints 11, 13, 14 y el bloque implementable del 15 están **cerrados y verificados** (`dotnet test` → 188 pruebas, build sin advertencias). Lo que queda, en orden de utilidad:
+
+1. **Desplegar y observar** — levantar en un entorno real con `ASPNETCORE_ENVIRONMENT=Production`, `Auth__Secret` y `Cors__AllowedOrigins` definidos; elegir entonces el destino de los logs (ítem abierto del Sprint 15).
+2. **Métricas de rendimiento** — medir antes de optimizar (ítem abierto del Sprint 15). Sin volumen real no hay nada que justifique tocar el código.
+3. **Sprint 8 (pendientes menores)** — `SortBy` con lista blanca y `fields` solo si un consumidor lo pide explícitamente.
+4. **Sprint 12 ampliado** — si se toca inventario con más tráfico, subir el nivel de las pruebas de concurrencia a paralelismo real entre peticiones.
+5. **Roles y políticas** — cuando haya más de un tipo de usuario; hoy solo se distingue autenticado/no autenticado.

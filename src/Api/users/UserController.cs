@@ -1,13 +1,16 @@
 using Api.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Users;
 
 /// <summary>
 /// Endpoints de usuarios: listado paginado con filtros, detalle, alta, baja lógica y actualización.
+/// Requiere autenticación Bearer (login en <c>/api/Auth/login</c>).
 /// Las respuestas de error (400/404/500) se generan en ErrorHandlingMiddleware como ProblemDetails.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {

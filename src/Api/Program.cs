@@ -9,7 +9,9 @@ var version = builder.Configuration["Application:Version"] ?? "1.0.0";
 
 builder.Services.AddDatabaseConfiguration(builder.Configuration);
 builder.Services.AddIdentityConfiguration();
-builder.Services.AddCorsConfiguration();
+builder.Services.AddAuthenticationConfiguration(builder.Configuration);
+builder.Services.AddCorsConfiguration(builder.Configuration, builder.Environment);
+builder.Services.AddRateLimitConfiguration(builder.Configuration);
 builder.Services.AddSwaggerConfiguration();
 builder.Services.AddApplicationServices();
 builder.Services.AddProvidersConfiguration();
@@ -39,10 +41,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseCors("AllowAll");
+app.UseCors(CorsConfiguration.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
+
+// Aviso temprano: sin orígenes configurados el CORS de producción queda cerrado.
+if (!app.Environment.IsDevelopment()
+    && (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>()).Length == 0)
+{
+    app.Logger.LogWarning(
+        "Cors:AllowedOrigins está vacío: las peticiones cross-origin están bloqueadas en {Environment}.",
+        app.Environment.EnvironmentName);
+}
 
 app.MapGet("/", () => Results.Ok(new
 {

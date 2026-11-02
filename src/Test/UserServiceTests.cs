@@ -9,13 +9,15 @@ namespace Api.Test;
 public class UserServiceTests
 {
     private FakeUserRepository _repository = null!;
+    private FakeRefreshTokenRepository _refreshTokens = null!;
     private UserService _service = null!;
 
     [SetUp]
     public void SetUp()
     {
         _repository = new FakeUserRepository();
-        _service = new UserService(_repository, new BCryptPasswordHasher());
+        _refreshTokens = new FakeRefreshTokenRepository();
+        _service = new UserService(_repository, new BCryptPasswordHasher(), _refreshTokens);
     }
 
     private static UserCreateDTO NewDto(
@@ -324,6 +326,58 @@ public class UserServiceTests
         {
             Assert.That(stored.SoftDelete, Is.Not.Null);
             Assert.That(stored.IsActive, Is.False);
+        });
+    }
+
+    [Test]
+    public async Task UpdateUser_WithPassword_RevokesExistingRefreshTokens()
+    {
+        var target = await CreateStoredUserAsync();
+        SeedRefreshToken(target.Id);
+
+        await _service.UpdateUserAsync(
+            target.Id,
+            new UserUpdateDTO { Name = target.Name!, Email = target.Email!, Password = "NewSecret456!" });
+
+        Assert.That(_refreshTokens.Tokens.Single().RevokedAt, Is.Not.Null,
+            "Cambiar la contraseña debe cerrar las sesiones abiertas.");
+    }
+
+    [Test]
+    public async Task UpdateUser_WithoutPassword_KeepsRefreshTokensActive()
+    {
+        var target = await CreateStoredUserAsync();
+        SeedRefreshToken(target.Id);
+
+        await _service.UpdateUserAsync(
+            target.Id,
+            new UserUpdateDTO { Name = "Renamed", Email = target.Email! });
+
+        Assert.That(_refreshTokens.Tokens.Single().RevokedAt, Is.Null,
+            "Sin cambio de contraseña no deben revocarse las sesiones.");
+    }
+
+    [Test]
+    public async Task DeleteUser_RevokesExistingRefreshTokens()
+    {
+        var user = await CreateStoredUserAsync();
+        SeedRefreshToken(user.Id);
+
+        Assert.That(await _service.DeleteUserAsync(user.Id), Is.True);
+
+        Assert.That(_refreshTokens.Tokens.Single().RevokedAt, Is.Not.Null,
+            "La baja del usuario debe cerrar sus sesiones.");
+    }
+
+    private void SeedRefreshToken(int userId)
+    {
+        _refreshTokens.Tokens.Add(new Api.Auth.RefreshToken
+        {
+            Id = 1,
+            Token = "stored-hash",
+            UserId = userId,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            CreatedAt = DateTime.UtcNow
         });
     }
 }

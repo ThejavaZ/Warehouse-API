@@ -1,36 +1,120 @@
 @Api_HostAddress = http://localhost:5259
+
+# --- Sesión: obtén un token con /api/Auth/login y pégalo aquí ---
+# (o pulsa "Authorize" en Swagger UI y pega el token sin el prefijo "Bearer ")
+@AccessToken = PEGA_AQUI_EL_ACCESS_TOKEN
+@RefreshToken = PEGA_AQUI_EL_REFRESH_TOKEN
+
+# --- Identificadores de ejemplo (ajústalos a los de tu base) ---
 @UserId = 1
+@ProductId = 1
+@WarehouseId = 1
+@Email = ana.test@example.com
+@Password = Secret123!
 
 ### Info de la aplicación
 GET {{Api_HostAddress}}/
 Accept: application/json
 
+########################################################################
+# Autenticación (Sprint 11)
+########################################################################
+
+### Registro (201; no devuelve tokens: usa /login para obtenerlos)
+POST {{Api_HostAddress}}/api/Auth/register
+Content-Type: application/json
+
+{
+  "name": "Ana Garcia",
+  "email": "{{Email}}",
+  "password": "{{Password}}"
+}
+
+### Login (200: accessToken + refreshToken + expiresIn)
+POST {{Api_HostAddress}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "email": "{{Email}}",
+  "password": "{{Password}}"
+}
+
+### Login con credenciales incorrectas (401 ProblemDetails, code = invalid_credentials)
+POST {{Api_HostAddress}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "email": "{{Email}}",
+  "password": "WrongPass123!"
+}
+
+### Perfil del usuario autenticado (200)
+GET {{Api_HostAddress}}/api/Auth/me
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Perfil sin token (401 ProblemDetails, code = unauthorized)
+GET {{Api_HostAddress}}/api/Auth/me
+Accept: application/json
+
+### Renovar sesión (200: rota el refresh token; reutilizar el anterior da 401)
+POST {{Api_HostAddress}}/api/Auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### Logout (204; la respuesta es idéntica aunque el token no exista)
+POST {{Api_HostAddress}}/api/Auth/revoke
+Content-Type: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### Token manipulado (401 ProblemDetails: la firma deja de validar)
+GET {{Api_HostAddress}}/api/User
+Authorization: Bearer {{AccessToken}}AAAA
+Accept: application/json
+
+########################################################################
+# Users (requiere Bearer desde el Sprint 11)
+########################################################################
+
 ### Listado de usuarios (sin filtros)
 GET {{Api_HostAddress}}/api/User
+Authorization: Bearer {{AccessToken}}
 Accept: application/json
 
 ### Listado con búsqueda + estado activo + paginación
 GET {{Api_HostAddress}}/api/User?search=ana&isActive=true&page=1&pageSize=20&orderDesc=true
+Authorization: Bearer {{AccessToken}}
 Accept: application/json
 
 ### Detalle de un usuario por id
 GET {{Api_HostAddress}}/api/User?id={{UserId}}
+Authorization: Bearer {{AccessToken}}
 Accept: application/json
 
 ### Página fuera de rango (debe devolver items vacíos con TotalItems real)
 GET {{Api_HostAddress}}/api/User?page=99&pageSize=10
+Authorization: Bearer {{AccessToken}}
 Accept: application/json
 
-### PageSize inválido (400 ProblemDetails)
+### PageSize inválido (400 ValidationProblemDetails)
 GET {{Api_HostAddress}}/api/User?pageSize=0
+Authorization: Bearer {{AccessToken}}
 Accept: application/json
 
 ### Usuario inexistente (404 ProblemDetails)
 GET {{Api_HostAddress}}/api/User?id=9999
+Authorization: Bearer {{AccessToken}}
 Accept: application/json
 
 ### Crear usuario (201, sin password en la respuesta)
 POST {{Api_HostAddress}}/api/User
+Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
@@ -41,6 +125,7 @@ Content-Type: application/json
 
 ### Crear usuario inválido (400 ValidationProblemDetails)
 POST {{Api_HostAddress}}/api/User
+Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
@@ -51,6 +136,7 @@ Content-Type: application/json
 
 ### Correo duplicado (400 ProblemDetails, code = validation_error)
 POST {{Api_HostAddress}}/api/User
+Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
@@ -61,6 +147,7 @@ Content-Type: application/json
 
 ### Actualizar usuario (contraseña opcional)
 PUT {{Api_HostAddress}}/api/User/{{UserId}}
+Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
@@ -71,6 +158,7 @@ Content-Type: application/json
 
 ### Actualización parcial (misma semántica que PUT)
 PATCH {{Api_HostAddress}}/api/User/{{UserId}}
+Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
@@ -80,6 +168,7 @@ Content-Type: application/json
 
 ### Actualizar usuario inexistente (404 ProblemDetails)
 PUT {{Api_HostAddress}}/api/User/9999
+Authorization: Bearer {{AccessToken}}
 Content-Type: application/json
 
 {
@@ -89,9 +178,191 @@ Content-Type: application/json
 
 ### Borrado lógico (204)
 DELETE {{Api_HostAddress}}/api/User/{{UserId}}
+Authorization: Bearer {{AccessToken}}
 
 ### Borrar de nuevo (404, ya está dado de baja)
 DELETE {{Api_HostAddress}}/api/User/{{UserId}}
+Authorization: Bearer {{AccessToken}}
+
+########################################################################
+# Products (Sprint 13)
+########################################################################
+
+### Listado de productos
+GET {{Api_HostAddress}}/api/Product?page=1&pageSize=10
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Búsqueda por nombre o SKU + filtro de estado
+GET {{Api_HostAddress}}/api/Product?search=tecl&isActive=true&orderDesc=false
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Detalle por id (404 si no existe o está dado de baja)
+GET {{Api_HostAddress}}/api/Product?id={{ProductId}}
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Crear producto (201)
+POST {{Api_HostAddress}}/api/Product
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "sku": "SKU-0001",
+  "name": "Teclado mecánico",
+  "description": "Switches rojos, formato TKL",
+  "price": 49.90
+}
+
+### SKU duplicado (400 ProblemDetails)
+POST {{Api_HostAddress}}/api/Product
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "sku": "SKU-0001",
+  "name": "Otro producto",
+  "price": 10
+}
+
+### Precio inválido (400 ValidationProblemDetails)
+POST {{Api_HostAddress}}/api/Product
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "sku": "SKU-0002",
+  "name": "Producto gratis",
+  "price": -1
+}
+
+### Actualizar producto (200; SKU y precio se validan igual que en creación)
+PUT {{Api_HostAddress}}/api/Product/{{ProductId}}
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "sku": "SKU-0001",
+  "name": "Teclado mecánico TKL",
+  "description": "",
+  "price": 45.50
+}
+
+### Borrado lógico de producto (204)
+DELETE {{Api_HostAddress}}/api/Product/{{ProductId}}
+Authorization: Bearer {{AccessToken}}
+
+########################################################################
+# Warehouses (Sprint 14)
+########################################################################
+
+### Listado de almacenes
+GET {{Api_HostAddress}}/api/Warehouse?page=1&pageSize=10
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Búsqueda por nombre o ubicación
+GET {{Api_HostAddress}}/api/Warehouse?search=norte&isActive=true
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Crear almacén (201)
+POST {{Api_HostAddress}}/api/Warehouse
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Almacén Norte",
+  "location": "Nave 2, bahía B"
+}
+
+### Nombre duplicado (400 ProblemDetails)
+POST {{Api_HostAddress}}/api/Warehouse
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Almacén Norte"
+}
+
+### Actualizar almacén (200)
+PUT {{Api_HostAddress}}/api/Warehouse/{{WarehouseId}}
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Almacén Norte Ampliado",
+  "location": "Nave 2, bahías B y C"
+}
+
+### Borrado lógico de almacén (204)
+DELETE {{Api_HostAddress}}/api/Warehouse/{{WarehouseId}}
+Authorization: Bearer {{AccessToken}}
+
+########################################################################
+# InventoryItem (Sprint 14): consulta y movimientos
+########################################################################
+
+### Existencias (filtros warehouseId / productId)
+GET {{Api_HostAddress}}/api/InventoryItem?warehouseId={{WarehouseId}}&productId={{ProductId}}
+Authorization: Bearer {{AccessToken}}
+Accept: application/json
+
+### Entrada de inventario: crea la ficha si no existe (200)
+POST {{Api_HostAddress}}/api/InventoryItem/restock
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "warehouseId": {{WarehouseId}},
+  "productId": {{ProductId}},
+  "quantity": 25
+}
+
+### Salida de inventario (200: resta la cantidad)
+POST {{Api_HostAddress}}/api/InventoryItem/consume
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "warehouseId": {{WarehouseId}},
+  "productId": {{ProductId}},
+  "quantity": 5
+}
+
+### Salida sin saldo suficiente (409 ProblemDetails, code = insufficient_stock)
+POST {{Api_HostAddress}}/api/InventoryItem/consume
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "warehouseId": {{WarehouseId}},
+  "productId": {{ProductId}},
+  "quantity": 999999
+}
+
+### Salida sin ficha de existencias (404 ProblemDetails)
+POST {{Api_HostAddress}}/api/InventoryItem/consume
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "warehouseId": 9999,
+  "productId": 9999,
+  "quantity": 1
+}
+
+### Cantidad inválida (400 ValidationProblemDetails)
+POST {{Api_HostAddress}}/api/InventoryItem/restock
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "warehouseId": {{WarehouseId}},
+  "productId": {{ProductId}},
+  "quantity": 0
+}
 
 ### Swagger UI
 GET {{Api_HostAddress}}/swagger/index.html

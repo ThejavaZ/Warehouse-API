@@ -1,3 +1,4 @@
+using Api.Auth;
 using Api.Common;
 using Microsoft.AspNetCore.Identity;
 
@@ -7,13 +8,16 @@ public class UserService : IUserService
 {
     private readonly IUserRepository _repository;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
 
     public UserService(
         IUserRepository repository,
-        IPasswordHasher<User> passwordHasher)
+        IPasswordHasher<User> passwordHasher,
+        IRefreshTokenRepository refreshTokenRepository)
     {
         _repository = repository;
         _passwordHasher = passwordHasher;
+        _refreshTokenRepository = refreshTokenRepository;
     }
 
     public async Task<UserViewModel> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -105,6 +109,9 @@ public class UserService : IUserService
         if (!string.IsNullOrWhiteSpace(dto.Password))
         {
             user.Password = _passwordHasher.HashPassword(user, dto.Password);
+
+            // Cambio de contraseña → mueren todas las sesiones abiertas con refresh tokens anteriores.
+            await _refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
         }
 
         await _repository.UpdateUserAsync(user, cancellationToken);
@@ -120,6 +127,9 @@ public class UserService : IUserService
             return false;
 
         await _repository.DeleteUserAsync(id, cancellationToken);
+
+        // Baja del usuario → revoca sus refresh tokens para cerrar sus sesiones.
+        await _refreshTokenRepository.RevokeAllForUserAsync(id, cancellationToken);
 
         return true;
     }

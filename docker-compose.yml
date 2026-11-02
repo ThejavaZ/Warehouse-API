@@ -31,6 +31,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Database__ApplyMigrationsOnStartup: "true"
+      # Secreto de firma JWT: la API no arranca sin él (mínimo 32 caracteres).
+      Auth__Secret: ${AUTH_SECRET:?Definir AUTH_SECRET en .env}
+      # Opcional: orígenes con acceso cross-origin en Production.
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-}
     ports:
       - "5259:8080"
 

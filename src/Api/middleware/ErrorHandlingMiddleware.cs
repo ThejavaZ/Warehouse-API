@@ -132,6 +132,7 @@ public class ErrorHandlingMiddleware
         StatusCodes.Status404NotFound => "Not Found",
         StatusCodes.Status409Conflict => "Conflict",
         StatusCodes.Status413PayloadTooLarge => "Payload Too Large",
+        StatusCodes.Status429TooManyRequests => "Too Many Requests",
         StatusCodes.Status500InternalServerError => "Internal Server Error",
         _ => "Error"
     };

@@ -9,34 +9,17 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Api.Test.Integration;
 
 [TestFixture]
-public class UserApiTests
+public class UserApiTests : IntegrationTestBase
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    private WarehouseApiFactory _factory = null!;
-    private HttpClient _client = null!;
-
-    [OneTimeSetUp]
-    public void OneTimeSetUp()
-    {
-        _factory = new WarehouseApiFactory();
-        _client = _factory.CreateClient();
-    }
-
-    [OneTimeTearDown]
-    public void OneTimeTearDown()
-    {
-        _client.Dispose();
-        _factory.Dispose();
-    }
-
     [SetUp]
     public async Task SetUp()
     {
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<Api.Data.AppDbContext>();
-        db.Users.RemoveRange(db.Users);
-        await db.SaveChangesAsync();
+        // El access token es un JWT stateless (no consulta la BD al validar), así que se
+        // autentica primero y después se limpia: cada prueba arranca con el Bearer montado
+        // y el listado vacío. El correo de sesión es único para que el registro nunca choque
+        // con usuarios que haya dejado la prueba anterior.
+        await AuthenticateAsync($"session-{Guid.NewGuid():N}@test.com");
+        await ClearDatabaseAsync();
     }
 
     private static UserCreateDtoPayload NewPayload(
@@ -48,15 +31,15 @@ public class UserApiTests
 
     private async Task<JsonElement> CreateUserAsync(string email, string name = "Test User")
     {
-        var response = await _client.PostAsJsonAsync("/api/User", NewPayload(email, name), JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/User", NewPayload(email, name), JsonOptions);
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
 
-        return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
+        return await ReadJsonAsync(response);
     }
 
     private async Task SeedInactiveUserAsync(string email, string name)
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Api.Data.AppDbContext>();
 
         db.Users.Add(new User
@@ -74,9 +57,24 @@ public class UserApiTests
     }
 
     [Test]
+    public async Task Get_WithoutToken_Returns401ProblemDetails()
+    {
+        Client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await Client.GetAsync("/api/User");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
+
+        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("unauthorized"));
+    }
+
+    [Test]
     public async Task Get_WithoutUsers_ReturnsEmptyPagedResult()
     {
-        var response = await _client.GetAsync("/api/User");
+        var response = await Client.GetAsync("/api/User");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -99,7 +97,7 @@ public class UserApiTests
         // La API no expone IsActive en creación, así que sembramos el usuario inactivo directo en la BD.
         await SeedInactiveUserAsync("ana.baja@test.com", "Ana Baja");
 
-        var response = await _client.GetAsync("/api/User?search=ana&isActive=true");
+        var response = await Client.GetAsync("/api/User?search=ana&isActive=true");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -115,7 +113,7 @@ public class UserApiTests
     [Test]
     public async Task Get_WithInvalidPageSize_Returns400ProblemDetails()
     {
-        var response = await _client.GetAsync("/api/User?pageSize=0");
+        var response = await Client.GetAsync("/api/User?pageSize=0");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
@@ -128,7 +126,7 @@ public class UserApiTests
     [Test]
     public async Task Get_WithUnknownId_Returns404ProblemDetails()
     {
-        var response = await _client.GetAsync("/api/User?id=9999");
+        var response = await Client.GetAsync("/api/User?id=9999");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
@@ -150,7 +148,7 @@ public class UserApiTests
             await CreateUserAsync($"user{i}@test.com", $"User {i}");
         }
 
-        var response = await _client.GetAsync("/api/User?page=2&pageSize=2&orderDesc=true");
+        var response = await Client.GetAsync("/api/User?page=2&pageSize=2&orderDesc=true");
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<UserListViewModel>>(JsonOptions);
 
@@ -168,7 +166,7 @@ public class UserApiTests
     [Test]
     public async Task Post_ValidUser_Returns201_WithoutPasswordInBody()
     {
-        var response = await _client.PostAsJsonAsync("/api/User", NewPayload(), JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/User", NewPayload(), JsonOptions);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         Assert.That(response.Headers.Location, Is.Not.Null);
@@ -185,7 +183,7 @@ public class UserApiTests
     [Test]
     public async Task Post_InvalidPayload_Returns400()
     {
-        var response = await _client.PostAsJsonAsync(
+        var response = await Client.PostAsJsonAsync(
             "/api/User",
             new { Name = "A", Email = "not-an-email", Password = "123" },
             JsonOptions);
@@ -198,7 +196,7 @@ public class UserApiTests
     {
         await CreateUserAsync("dup@test.com");
 
-        var response = await _client.PostAsJsonAsync("/api/User", NewPayload("dup@test.com"), JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/User", NewPayload("dup@test.com"), JsonOptions);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
 
@@ -210,7 +208,7 @@ public class UserApiTests
     [Test]
     public async Task Put_UnknownId_Returns404()
     {
-        var response = await _client.PutAsJsonAsync(
+        var response = await Client.PutAsJsonAsync(
             "/api/User/9999",
             new { Name = "Ghost", Email = "ghost@test.com" },
             JsonOptions);
@@ -224,7 +222,7 @@ public class UserApiTests
         var created = await CreateUserAsync("update@test.com", "Original Name");
         var id = created.GetProperty("id").GetInt32();
 
-        var response = await _client.PutAsJsonAsync(
+        var response = await Client.PutAsJsonAsync(
             $"/api/User/{id}",
             new { Name = "Updated Name", Email = "update@test.com" },
             JsonOptions);
@@ -242,15 +240,15 @@ public class UserApiTests
         var created = await CreateUserAsync("delete@test.com");
         var id = created.GetProperty("id").GetInt32();
 
-        var deleteResponse = await _client.DeleteAsync($"/api/User/{id}");
+        var deleteResponse = await Client.DeleteAsync($"/api/User/{id}");
         Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
 
-        var listResponse = await _client.GetAsync("/api/User");
+        var listResponse = await Client.GetAsync("/api/User");
         var result = await listResponse.Content.ReadFromJsonAsync<PagedResult<UserListViewModel>>(JsonOptions);
 
         Assert.That(result!.TotalItems, Is.Zero, "El usuario borrado lógicamente no debe aparecer en el listado.");
 
-        var deleteAgain = await _client.DeleteAsync($"/api/User/{id}");
+        var deleteAgain = await Client.DeleteAsync($"/api/User/{id}");
         Assert.That(deleteAgain.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
     }
 
@@ -260,9 +258,9 @@ public class UserApiTests
         var created = await CreateUserAsync("reuse@test.com");
         var id = created.GetProperty("id").GetInt32();
 
-        await _client.DeleteAsync($"/api/User/{id}");
+        await Client.DeleteAsync($"/api/User/{id}");
 
-        var response = await _client.PostAsJsonAsync("/api/User", NewPayload("reuse@test.com"), JsonOptions);
+        var response = await Client.PostAsJsonAsync("/api/User", NewPayload("reuse@test.com"), JsonOptions);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created),
             "El índice único filtrado permite reutilizar correos de usuarios dados de baja.");
