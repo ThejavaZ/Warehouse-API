@@ -52,7 +52,7 @@ public class ErrorHandlingMiddleware
                 context,
                 StatusCodes.Status400BadRequest,
                 "validation_error",
-                ex.Message,
+                WithoutParameterSuffix(ex),
                 ex.ParamName);
         }
         catch (UnauthorizedAccessException ex)
@@ -122,6 +122,30 @@ public class ErrorHandlingMiddleware
         context.Response.ContentType = "application/problem+json";
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
+    }
+
+    /// <summary>
+    /// ArgumentException le añade al mensaje un sufijo interno de .NET
+    /// (<c>(Parameter 'SKU')</c>). Ese <c>detail</c> es lo que acaba viendo el
+    /// usuario final en el cliente, así que se quita: el nombre del campo ya
+    /// viaja aparte en la extensión <c>field</c>.
+    /// </summary>
+    private static string WithoutParameterSuffix(ArgumentException ex)
+    {
+        if (string.IsNullOrEmpty(ex.ParamName))
+        {
+            return ex.Message;
+        }
+
+        var suffix = $"(Parameter '{ex.ParamName}')";
+        var message = ex.Message.EndsWith(suffix, StringComparison.Ordinal)
+            ? ex.Message[..^suffix.Length].TrimEnd()
+            : ex.Message;
+
+        // Sin mensaje propio quedaría un detail vacío, peor que el sufijo.
+        return string.IsNullOrWhiteSpace(message)
+            ? $"Invalid value for '{ex.ParamName}'."
+            : message;
     }
 
     private static string GetTitle(int statusCode) => statusCode switch

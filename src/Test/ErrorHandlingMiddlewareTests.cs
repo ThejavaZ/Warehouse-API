@@ -66,6 +66,28 @@ public class ErrorHandlingMiddlewareTests
             Assert.That(problem!.Status, Is.EqualTo(400));
             Assert.That(problem.Extensions["code"]?.ToString(), Is.EqualTo("validation_error"));
             Assert.That(problem.Extensions["field"]?.ToString(), Is.EqualTo("Email"));
+            // El detalle es lo que ve el usuario final: sin el sufijo interno
+            // de .NET "(Parameter 'Email')", que ya viaja en `field`.
+            Assert.That(problem.Detail, Is.EqualTo("A user with this email already exists."));
+        });
+    }
+
+    [Test]
+    public async Task ArgumentException_WithoutMessage_StillProducesADetail()
+    {
+        var (status, _, body) = await InvokeAsync(_ => throw new ArgumentException(null, "SKU"));
+
+        var problem = ToProblemDetails(body);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(status, Is.EqualTo(StatusCodes.Status400BadRequest));
+            // Sin mensaje propio, .NET rellena con un recurso localizado: solo
+            // se exige que llegue algo y que no traiga el sufijo del parámetro,
+            // que es lo que no debe ver el usuario final.
+            Assert.That(problem!.Detail, Is.Not.Null.And.Not.Empty);
+            Assert.That(problem.Detail, Does.Not.Contain("(Parameter"));
+            Assert.That(problem.Extensions["field"]?.ToString(), Is.EqualTo("SKU"));
         });
     }
 
