@@ -1,0 +1,75 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        name: Build and test
+        runs-on: ubuntu-latest
+
+        env:
+            # Los tests no necesitan secretos: la fábrica de integración inyecta
+            # Auth:Secret en memoria y sustituye PostgreSQL por SQLite en memoria.
+            DOTNET_NOLOGO: true
+            DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up .NET SDK (global.json)
+              uses: actions/setup-dotnet@v4
+              with:
+                  global-json-file: global.json
+
+            - name: Cache NuGet packages
+              uses: actions/cache@v4
+              with:
+                  path: ~/.nuget/packages
+                  key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: |
+                      nuget-${{ runner.os }}-
+
+            - name: Restore dependencies
+              run: dotnet restore WarehouseApi.sln
+
+            - name: Build
+              run: dotnet build WarehouseApi.sln --no-restore
+
+            - name: Test with coverage
+              run: >
+                  dotnet test WarehouseApi.sln
+                  --no-build
+                  --verbosity normal
+                  --collect:"XPlat Code Coverage"
+                  --logger "trx;LogFileName=test-results.trx"
+
+            - name: Upload test results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: test-results
+                  path: '**/TestResults/*.trx'
+                  if-no-files-found: ignore
+
+            - name: Upload coverage report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage
+                  path: '**/TestResults/**/coverage.cobertura.xml'
+                  if-no-files-found: ignore

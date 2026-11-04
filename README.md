@@ -1,5 +1,7 @@
 # Warehouse API
 
+[![CI](https://github.com/ThejavaZ/Warehouse-API/actions/workflows/ci.yml/badge.svg)](https://github.com/ThejavaZ/Warehouse-API/actions/workflows/ci.yml)
+
 API REST para gestión de almacén construida con **ASP.NET Core 8**, **EF Core** y **PostgreSQL**.
 
 Módulos disponibles:

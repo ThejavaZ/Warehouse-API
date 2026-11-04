@@ -2,5 +2,8 @@
 **/obj/
 .vs/
 
+# Resultados de pruebas y cobertura (los sube el CI como artefacto)
+**/TestResults/
+
 # Secretos locales (docker compose / entorno)
 .env

@@ -22,6 +22,14 @@ public class WarehouseApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // UseSetting escribe en la configuración del host, que WebApplicationBuilder
+        // fusiona antes de ejecutar Program.cs: así el fail fast de
+        // AddAuthenticationConfiguration ve el secreto aunque no existan user secrets
+        // (que es exactamente lo que ocurre en CI).
+        builder.UseSetting("Auth:Secret", TestJwtSecret);
+        builder.UseSetting("RateLimit:PermitLimit", "1000000");
+        builder.UseSetting("RateLimit:AuthPermitLimit", "1000000");
+
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
