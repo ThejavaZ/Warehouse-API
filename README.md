@@ -58,10 +58,10 @@ La cadena de conexión y el secreto JWT **no están en el repositorio**. En desa
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
   "Host=localhost;Port=5432;Database=warehouse_db;Username=<usuario>;Password=<password>" \
-  --project src/Api
+  --project src/WMS.Api
 
 # Secreto de firma JWT (mínimo 32 caracteres). Genera uno con: openssl rand -hex 32
-dotnet user-secrets set "Auth:Secret" "<valor de 32+ caracteres>" --project src/Api
+dotnet user-secrets set "Auth:Secret" "<valor de 32+ caracteres>" --project src/WMS.Api
 ```
 
 En producción usa variables de entorno en lugar de user secrets:
@@ -85,7 +85,7 @@ dotnet ef database update --project src/Api
 #### 4. Ejecutar
 
 ```bash
-dotnet run --project src/Api
+dotnet run --project src/WMS.Api
 ```
 
 - Swagger UI: `http://localhost:5259/swagger`
@@ -288,7 +288,7 @@ Ejemplo de respuesta `404`:
 
 **Los detalles internos de las excepciones nunca se devuelven al cliente**: quedan únicamente en los logs. La validación automática de `[ApiController]` está configurada en `ValidationConfiguration` para que también responda `application/problem+json`.
 
-El manejo está centralizado en [`src/Api/middleware/ErrorHandlingMiddleware.cs`](src/Api/middleware/ErrorHandlingMiddleware.cs); los controladores no usan `try/catch`.
+El manejo está centralizado en [`src/WMS.Api/middleware/ErrorHandlingMiddleware.cs`](src/WMS.Api/middleware/ErrorHandlingMiddleware.cs); los controladores no usan `try/catch`.
 
 ---
 
@@ -622,7 +622,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 *Objetivo: primera versión mantenible por otra persona.*
 
 - [x] Documentar endpoints con OpenAPI — Swagger con comentarios XML generados desde el código.
-- [x] Ejemplos de peticiones y respuestas — en `src/Api/Api.http` (Auth, Users, Products, Warehouses, Inventory) y en este README.
+- [x] Ejemplos de peticiones y respuestas — en `src/WMS.Api/Api.http` (Auth, Users, Products, Warehouses, Inventory) y en este README.
 - [x] Documentar códigos de error — tabla de ProblemDetails en la sección de Manejo de errores (incluidos `401`, `409` y `429`).
 - [x] Documentar autenticación — sección [Autenticación (JWT)](#autenticación-jwt) con el flujo completo, decisiones tomadas y ejemplo de uso; `Api.http` incluye register/login/me/refresh/revoke.
 - [x] Revisar índices de PostgreSQL — `Email`, `SKU` y `Name` únicos filtrados por `SoftDelete`; `UUID` únicos; `(WarehouseId, ProductId)` único en inventario; FKs indexadas (`UserId`, `ProductId`, `WarehouseId`).

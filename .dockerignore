@@ -5,8 +5,9 @@
 **/bin
 **/obj
 
-# El proyecto de pruebas no forma parte de la imagen
+# Los proyectos de pruebas no forman parte de la imagen
 src/Test
+src/WMS.*.Test
 
 # Archivos que la app no necesita dentro del contenedor
 README.md

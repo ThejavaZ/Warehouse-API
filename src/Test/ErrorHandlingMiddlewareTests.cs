@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Api.Common;
-using Api.Middleware;
+using WMS.Api.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Mvc;

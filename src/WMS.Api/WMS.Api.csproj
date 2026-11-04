@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Composition root: aquí se resuelven las cuatro capas. -->
+    <UserSecretsId>Warehouse-API-8c3f1b7a</UserSecretsId>
+    <!-- Swagger lee WMS.Api.xml desde AppContext.BaseDirectory. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.33" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Las tres capas: el composition root es el único sitio que las conoce todas. -->
+    <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
+    <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
+    <ProjectReference Include="..\WMS.Infrastructure\WMS.Infrastructure.csproj" />
+    <!--
+      Referencia transitoria a la migración: Api todavía contiene los servicios,
+      repositorios y el AppDbContext de los módulos aún no movidos. Desaparece
+      cuando el último módulo pase a WMS.Application / WMS.Infrastructure.
+    -->
+    <ProjectReference Include="..\Api\Api.csproj" />
+  </ItemGroup>
+
+</Project>

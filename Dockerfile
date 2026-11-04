@@ -2,12 +2,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0.424 AS build
 WORKDIR /src
 
-# Copiar solo el .csproj primero para cachear la restauración de paquetes
+# Copiar solo los .csproj primero para cachear la restauración de paquetes.
+# Se copian todos: WMS.Api es el host y arrastra Api + las tres capas.
 COPY src/Api/Api.csproj src/Api/
-RUN dotnet restore src/Api/Api.csproj
+COPY src/WMS.Api/WMS.Api.csproj src/WMS.Api/
+COPY src/WMS.Domain/WMS.Domain.csproj src/WMS.Domain/
+COPY src/WMS.Application/WMS.Application.csproj src/WMS.Application/
+COPY src/WMS.Infrastructure/WMS.Infrastructure.csproj src/WMS.Infrastructure/
+RUN dotnet restore src/WMS.Api/WMS.Api.csproj
 
-COPY src/Api/ src/Api/
-RUN dotnet publish src/Api/Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+COPY src/ src/
+RUN dotnet publish src/WMS.Api/WMS.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # Etapa 2: imagen de ejecución (sin SDK, solo el runtime de ASP.NET)
 # Nota: los tags de aspnet usan la versión del *runtime* (8.0.x), que no coincide
@@ -23,4 +28,4 @@ EXPOSE 8080
 # Usuario no privilegiado incluido en las imágenes .NET 8 (uid 1654)
 USER $APP_UID
 
-ENTRYPOINT ["dotnet", "Api.dll"]
+ENTRYPOINT ["dotnet", "WMS.Api.dll"]
