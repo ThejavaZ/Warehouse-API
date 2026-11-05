@@ -8,6 +8,13 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <!--
+      Para JwtTokenService (adaptador de ITokenService): JwtSecurityToken y
+      SymmetricSecurityKey. Configuration.Abstractions porque solo se lee
+      IConfiguration, no se enlaza configuración.
+    -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.*" />
   </ItemGroup>
 
   <ItemGroup>
