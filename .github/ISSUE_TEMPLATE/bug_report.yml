@@ -1,0 +1,83 @@
+name: Informe de bug
+description: Algo no funciona como se esperaba en la API.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Gracias por tomar el tiempo de reportar un bug.
+              **No incluyas credenciales, cadenas de conexión ni tokens** en este formulario.
+
+    - type: textarea
+      id: describe
+      attributes:
+          label: Descripción
+          description: Qué ocurre y qué esperabas que ocurriera.
+          placeholder: Al hacer `POST /api/Product` con un SKU duplicado...
+      validations:
+          required: true
+
+    - type: textarea
+      id: repro
+      attributes:
+          label: Pasos para reproducir
+          description: Incluye la petición exacta (método, ruta y cuerpo) o el comando que la provoca.
+          placeholder: |
+              1. Arranco con `dotnet run --project src/WMS.Api`
+              2. `POST /api/Product` con cuerpo `{"SKU":"ABC","Name":"X","Price":10}`
+              3. Repito el mismo POST
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected
+      attributes:
+          label: Comportamiento esperado
+          placeholder: "`409` con `code: sku_conflict`."
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual
+      attributes:
+          label: Comportamiento real
+          description: Copia aquí el `status`, el cuerpo ProblemDetails y el `traceId` si los hay.
+          placeholder: "`500` con `code: internal_error` y traceId `0HN...`."
+      validations:
+          required: true
+
+    - type: dropdown
+      id: module
+      attributes:
+          label: Módulo afectado
+          options:
+              - Auth
+              - Users
+              - Products
+              - Warehouses
+              - Inventory
+              - Infraestructura (CI, Docker, build)
+              - Otro
+      validations:
+          required: true
+
+    - type: textarea
+      id: environment
+      attributes:
+          label: Entorno
+          description: Versión del SDK, cómo ejecutas la API y versión de PostgreSQL si aplica.
+          placeholder: |
+              - SDK: 8.0.427 (global.json pide 8.0.424)
+              - `dotnet run --project src/WMS.Api`
+              - PostgreSQL 18
+      validations:
+          required: false
+
+    - type: textarea
+      id: extra
+      attributes:
+          label: Información adicional
+          description: Logs, capturas o cualquier contexto que ayude.
+      validations:
+          required: false

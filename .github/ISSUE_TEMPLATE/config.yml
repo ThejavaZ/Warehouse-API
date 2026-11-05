@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+    - name: Documentación de la API (README)
+      url: https://github.com/ThejavaZ/Warehouse-API#readme
+      about: "Revisa el README antes de abrir un issue — rutas, códigos de error y flujo de autenticación."
+    - name: Swagger UI en local
+      url: http://localhost:5259/swagger
+      about: "Con la API arrancada (dotnet run --project src/WMS.Api) puedes probar los endpoints aquí mismo."

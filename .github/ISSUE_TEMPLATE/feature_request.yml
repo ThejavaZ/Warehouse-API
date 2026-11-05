@@ -1,0 +1,61 @@
+name: Solicitud de funcionalidad
+description: Propón una mejora o una funcionalidad nueva para la API.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Antes de proponer algo, revisa el [README](https://github.com/ThejavaZ/Warehouse-API#readme)
+              y el backlog de migración: muchas cosas están previstas y quizá ya estén planificadas.
+
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problema que resuelve
+          description: Qué falta hoy y a quién afecta. Si puedes, cuantifícalo.
+          placeholder: "No se puede consultar el historial de movimientos de un producto."
+      validations:
+          required: true
+
+    - type: textarea
+      id: solution
+      attributes:
+          label: Solución propuesta
+          description: Cómo te imaginas que funcione, con el contrato HTTP si lo tienes claro.
+          placeholder: "`GET /api/InventoryItem/movements?productId=5` devolviendo una lista paginada."
+      validations:
+          required: true
+
+    - type: dropdown
+      id: module
+      attributes:
+          label: Módulo afectado
+          options:
+              - Auth
+              - Users
+              - Products
+              - Warehouses
+              - Inventory
+              - Infraestructura (CI, Docker, build)
+              - Otro
+      validations:
+          required: true
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternativas consideradas
+          description: Otras formas de resolverlo y por qué descartaste cada una.
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: scope
+      attributes:
+          label: Alcance
+          description: La migración a arquitectura hexagonal va por sprints; revisa que tu propuesta encaje.
+          options:
+              - label: He leído el README y esta propuesta no duplica algo ya existente.
+                required: true
+              - label: Entiendo que los cambios que rompan el contrato HTTP afectan al frontend (Warehouse-Client).
