@@ -6,5 +6,5 @@ namespace WMS.Domain.Entities;
 [Table("roles")]
 public class Role : Model
 {
-    
+
 }

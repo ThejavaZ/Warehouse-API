@@ -39,13 +39,13 @@ public class UserService : IUserService
         var (users, totalItems) = await _repository.GetAllUsersAsync(query, cancellationToken);
 
         var viewModels = users.Select(user => new UserListViewModel
-            {
-                Id = user.Id,
-                UUID = user.UUID,
-                Name = user.Name,
-                Email = user.Email,
-                IsActive = user.IsActive
-            })
+        {
+            Id = user.Id,
+            UUID = user.UUID,
+            Name = user.Name,
+            Email = user.Email,
+            IsActive = user.IsActive
+        })
             .ToList();
 
         int totalPages = (int)Math.Ceiling(totalItems / (double)query.PageSize);

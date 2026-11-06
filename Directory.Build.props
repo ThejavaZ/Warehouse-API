@@ -1,0 +1,28 @@
+<Project>
+  <!--
+    Propiedades compartidas por todos los proyectos de la solución.
+
+    Los .csproj solo declaran lo que los diferencia (TFM, paquetes,
+    referencias). Si un proyecto necesita una excepción, declárala en su
+    .csproj: las propiedades del proyecto se aplican DESPUÉS de las de este
+    fichero y las suyas ganan.
+
+    Ojo con el Dockerfile: su etapa de build copia los .csproj por capas y
+    después este fichero (COPY Directory.Build.props). Si añades aquí una
+    propiedad que afecte a `dotnet restore`, ese COPY debe ir antes del restore.
+  -->
+  <PropertyGroup>
+    <!-- Estaban duplicados en los 10 .csproj. -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      Decisión de la migración (Sprint 1): NO tratar advertencias como errores
+      mientras el monolito se migra a la arquitectura hexagonal, para no
+      bloquear el build con avisos heredados. Cuando la migración esté cerrada
+      y todo esté limpio, cámbialo a true aquí para blindar la solución entera
+      de una sola vez.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

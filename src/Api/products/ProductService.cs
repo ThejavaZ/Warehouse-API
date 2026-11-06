@@ -30,14 +30,14 @@ public class ProductService : IProductService
         var (products, totalItems) = await _repository.GetAllProductsAsync(query, cancellationToken);
 
         var viewModels = products.Select(product => new ProductListViewModel
-            {
-                Id = product.Id,
-                UUID = product.UUID,
-                SKU = product.SKU,
-                Name = product.Name,
-                Price = product.Price,
-                IsActive = product.IsActive
-            })
+        {
+            Id = product.Id,
+            UUID = product.UUID,
+            SKU = product.SKU,
+            Name = product.Name,
+            Price = product.Price,
+            IsActive = product.IsActive
+        })
             .ToList();
 
         int totalPages = (int)Math.Ceiling(totalItems / (double)query.PageSize);

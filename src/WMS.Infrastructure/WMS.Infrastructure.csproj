@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <!--
       Mismo id que WMS.Api a propósito: los user secrets son de la aplicación,
       no del proyecto que los lee. Aquí hace falta para que AppDbContextDesignTimeFactory

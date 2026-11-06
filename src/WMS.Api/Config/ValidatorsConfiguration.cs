@@ -8,4 +8,4 @@ public static class ValidatorsConfiguration
         // Configuration for validators
         return services;
     }
-}   
+}

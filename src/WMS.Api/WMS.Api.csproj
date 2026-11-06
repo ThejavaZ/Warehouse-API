@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <!-- Composition root: aquí se resuelven las cuatro capas. -->
     <UserSecretsId>Warehouse-API-8c3f1b7a</UserSecretsId>
     <!-- Swagger lee WMS.Api.xml desde AppContext.BaseDirectory. -->

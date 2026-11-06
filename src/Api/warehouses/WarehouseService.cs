@@ -30,13 +30,13 @@ public class WarehouseService : IWarehouseService
         var (warehouses, totalItems) = await _repository.GetAllWarehousesAsync(query, cancellationToken);
 
         var viewModels = warehouses.Select(warehouse => new WarehouseListViewModel
-            {
-                Id = warehouse.Id,
-                UUID = warehouse.UUID,
-                Name = warehouse.Name,
-                Location = warehouse.Location,
-                IsActive = warehouse.IsActive
-            })
+        {
+            Id = warehouse.Id,
+            UUID = warehouse.UUID,
+            Name = warehouse.Name,
+            Location = warehouse.Location,
+            IsActive = warehouse.IsActive
+        })
             .ToList();
 
         int totalPages = (int)Math.Ceiling(totalItems / (double)query.PageSize);

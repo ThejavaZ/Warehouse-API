@@ -9,6 +9,9 @@ COPY src/WMS.Api/WMS.Api.csproj src/WMS.Api/
 COPY src/WMS.Domain/WMS.Domain.csproj src/WMS.Domain/
 COPY src/WMS.Application/WMS.Application.csproj src/WMS.Application/
 COPY src/WMS.Infrastructure/WMS.Infrastructure.csproj src/WMS.Infrastructure/
+# Nullable/ImplicitUsings/TreatWarningsAsErrors viven aquí, no en los .csproj:
+# sin este COPY el publish de la imagen compilaría con otras reglas que en local.
+COPY Directory.Build.props ./
 RUN dotnet restore src/WMS.Api/WMS.Api.csproj
 
 COPY src/ src/

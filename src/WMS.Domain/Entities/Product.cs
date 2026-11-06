@@ -14,6 +14,6 @@ public class Product : Model
 
     public Product()
     {
-        if(Price < 0) throw new ArgumentException("Price has not minimal to 0");
+        if (Price < 0) throw new ArgumentException("Price has not minimal to 0");
     }
 }
