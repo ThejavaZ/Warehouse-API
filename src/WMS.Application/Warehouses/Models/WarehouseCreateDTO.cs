@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Warehouses;
+namespace WMS.Application.Warehouses;
 
 public class WarehouseCreateDTO
 {

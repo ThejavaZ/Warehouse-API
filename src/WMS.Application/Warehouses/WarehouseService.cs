@@ -1,6 +1,7 @@
 using WMS.Application.Common;
+using WMS.Domain.Entities;
 
-namespace Api.Warehouses;
+namespace WMS.Application.Warehouses;
 
 public class WarehouseService : IWarehouseService
 {

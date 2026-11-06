@@ -1,5 +1,4 @@
 using Api.Inventory;
-using Api.Warehouses;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;

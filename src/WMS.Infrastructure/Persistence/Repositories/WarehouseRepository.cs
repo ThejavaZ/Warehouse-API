@@ -1,6 +1,7 @@
-using Api.Warehouses;
 using Microsoft.EntityFrameworkCore;
 using WMS.Application.Common;
+using WMS.Application.Warehouses;
+using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.Infrastructure.Persistence.Repositories;

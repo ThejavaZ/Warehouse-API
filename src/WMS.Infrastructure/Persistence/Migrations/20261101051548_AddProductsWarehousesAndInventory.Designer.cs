@@ -203,7 +203,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                     b.ToTable("users");
                 });
 
-            modelBuilder.Entity("Api.Warehouses.Warehouse", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.Warehouse", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -462,7 +462,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Api.Warehouses.Warehouse", "Warehouse")
+                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)

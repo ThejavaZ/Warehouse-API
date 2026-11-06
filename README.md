@@ -359,11 +359,12 @@ Warehouse-API/
 │   │   ├── Config/                      # BD, Auth, CORS, RateLimit, Swagger, Identity…
 │   │   └── middleware/ErrorHandlingMiddleware.cs
 │   ├── WMS.Domain/                      # Entidades (sin dependencias)
-│   │   ├── Entities/                    # User, RefreshToken, Product y scaffolds (Warehouse, Category…)
+│   │   ├── Entities/                    # User, RefreshToken, Product, Warehouse y scaffolds (Inventory, Category…)
 │   │   └── Common/                      # Model.cs (base común) y DomainException.cs
 │   ├── WMS.Application/                 # Casos de uso y puertos
 │   │   ├── Users/                       # UserService, IUserService, IUserRepository y Models/ (DTOs, VM, Query)
 │   │   ├── Products/                    # ProductService, IProductService, IProductRepository y Models/
+│   │   ├── Warehouses/                  # WarehouseService, IWarehouseService, IWarehouseRepository y Models/
 │   │   ├── Auth/                        # IRefreshTokenRepository
 │   │   ├── Common/                      # PagedQuery, PagedResult
 │   │   └── Ports/                       # IPasswordHasher, ITokenService
@@ -374,11 +375,11 @@ Warehouse-API/
 │   │   │   ├── Migrations/
 │   │   │   └── Repositories/            # User, Product, Warehouse, Inventory, RefreshToken
 │   │   └── auth/                        # JwtTokenService y BcryptPasswordHasher
-│   ├── Api/                             # Monolito en migración (puente a T11–T15)
+│   ├── Api/                             # Monolito en migración (puente a T12–T15)
 │   │   ├── security/BCryptPasswordHasher.cs
-│   │   └── auth/ warehouses/ inventory/
+│   │   └── auth/ inventory/
 │   │       ├── *Service.cs              # Casos de uso (→ WMS.Application)
-│   │       ├── interfaces/              # IAuthService, IWarehouseRepository…
+│   │       ├── interfaces/              # IAuthService, IInventoryRepository…
 │   │       └── models/                  # DTOs, ViewModels, Query y entidades (→ WMS.Domain)
 │   ├── Test/                            # NUnit: unit tests de servicios, repos y middleware
 │   │   └── Fakes/                       # Dobles de repositorio para los servicios

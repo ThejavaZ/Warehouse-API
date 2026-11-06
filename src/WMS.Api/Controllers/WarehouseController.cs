@@ -1,7 +1,8 @@
-using Api.Warehouses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WMS.Application.Common;
+using WMS.Application.Warehouses;
+using WMS.Domain.Entities;
 
 namespace WMS.Api.Controllers;
 

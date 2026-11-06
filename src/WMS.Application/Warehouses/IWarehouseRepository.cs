@@ -1,4 +1,6 @@
-namespace Api.Warehouses;
+using WMS.Domain.Entities;
+
+namespace WMS.Application.Warehouses;
 
 public interface IWarehouseRepository
 {

@@ -55,21 +55,23 @@ completa y sus alternativas.
 | T8 | Limpieza tras el traslado de tests: docs, paquetes y recuentos | ✅ | este commit |
 | T9 | Módulo Users completo a `WMS.Application` (servicio, interfaces y DTOs), entidad `User`/`RefreshToken` y `Api.Common` repartidos en `WMS.Domain`/`WMS.Application`, puerto `IRefreshTokenRepository` adelantado y migración `AddDescriptionToUsers` | ✅ | este commit |
 | T10 | Módulo Products completo a `WMS.Application`; `Product` = scaffold `: Model` (−location, +`[Table("products")]`) que sustituye a la entity de `Api`, strings EF reescritos | ✅ | este commit |
-| T11–T15 | Migrar los módulos (Warehouses, Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
+| T11 | Módulo Warehouses completo a `WMS.Application`; `Warehouse` = scaffold `: Model` (namespace corregido) con migración `AddDescriptionToWarehouses` | ✅ | este commit |
+| T12–T15 | Migrar los módulos (Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
 
-## Qué queda por mover (T11–T15) y por qué así
+## Qué queda por mover (T12–T15) y por qué así
 
 Hoy existe un **puente transitorio**: `WMS.Infrastructure` referencia a
-`src/Api` porque las entidades (`Api.Warehouses.Warehouse`, `Api.Inventory.InventoryItem`, …) y
+`src/Api` porque las entidades (`Api.Inventory.InventoryItem`, …) y
 los servicios siguen allí. Se resuelve módulo a módulo:
 
 - **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
   y los `Designer` de las migraciones referencian cada entidad por **nombre
-  completo en strings** (`modelBuilder.Entity("Api.Warehouses.Warehouse")`).
+  completo en strings** (`modelBuilder.Entity("Api.Inventory.InventoryItem")`).
   Renombrarlas exige actualizar esos ficheros generados y pasar el gate del
-  esquema; T9 y T10 ya lo hicieron para `User`, `RefreshToken` y `Product`.
-  (`WMS.Domain/Entities` aún contiene un scaffold colisionante —
-  `Warehouse.cs` — que se sustituye al migrar su módulo. `Movement.cs`,
+  esquema; T9–T11 ya lo hicieron para `User`, `RefreshToken`, `Product` y
+  `Warehouse`.
+  (`WMS.Domain/Entities` aún contiene scaffolds sin migrar — `Inventory.cs`,
+  `Location.cs`, `Category.cs`… — que aún no se referencian. `Movement.cs`,
   `DependencyInjection.cs` y `Persistence/AppDbContext.cs` estuvieron vacíos
   como marcadores; los dos primeros siguen esperando su módulo.)
 - **Casos de uso y servicios** → `WMS.Application`.

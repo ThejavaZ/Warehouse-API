@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Api.Warehouses;
 using WMS.Domain.Entities;
 
 namespace Api.Inventory;

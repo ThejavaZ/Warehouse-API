@@ -1,6 +1,6 @@
 using WMS.Application.Common;
 
-namespace Api.Warehouses;
+namespace WMS.Application.Warehouses;
 
 public class WarehouseQuery : PagedQuery
 {
