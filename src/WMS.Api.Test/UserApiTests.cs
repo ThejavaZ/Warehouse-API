@@ -6,14 +6,15 @@ using Api.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
-[TestFixture]
-public class UserApiTests : IntegrationTestBase
+public class UserApiTests : IntegrationTestBase, IClassFixture<WarehouseApiFactory>
 {
-    [SetUp]
-    public async Task SetUp()
+    public UserApiTests(WarehouseApiFactory factory) : base(factory) { }
+
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         // El access token es un JWT stateless (no consulta la BD al validar), así que se
         // autentica primero y después se limpia: cada prueba arranca con el Bearer montado
         // y el listado vacío. El correo de sesión es único para que el registro nunca choque
@@ -32,7 +33,7 @@ public class UserApiTests : IntegrationTestBase
     private async Task<JsonElement> CreateUserAsync(string email, string name = "Test User")
     {
         var response = await Client.PostAsJsonAsync("/api/User", NewPayload(email, name), JsonOptions);
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return await ReadJsonAsync(response);
     }
@@ -56,39 +57,36 @@ public class UserApiTests : IntegrationTestBase
         await db.SaveChangesAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithoutToken_Returns401ProblemDetails()
     {
         Client.DefaultRequestHeaders.Authorization = null;
 
         var response = await Client.GetAsync("/api/User");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("unauthorized"));
+        Assert.Equal("unauthorized", problem!.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithoutUsers_ReturnsEmptyPagedResult()
     {
         var response = await Client.GetAsync("/api/User");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<UserListViewModel>>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result!.TotalItems, Is.Zero);
-            Assert.That(result.TotalPages, Is.Zero);
-            Assert.That(result.Items, Is.Empty);
-        });
+        Assert.Equal(0, result!.TotalItems);
+        Assert.Equal(0, result.TotalPages);
+        Assert.Empty(result.Items);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithSearchAndIsActive_CombinesFilters()
     {
         await CreateUserAsync("ana@test.com", "Ana Garcia");
@@ -99,48 +97,42 @@ public class UserApiTests : IntegrationTestBase
 
         var response = await Client.GetAsync("/api/User?search=ana&isActive=true");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<UserListViewModel>>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result!.TotalItems, Is.EqualTo(1));
-            Assert.That(result.Items.Single().Name, Is.EqualTo("Ana Garcia"));
-        });
+        Assert.Equal(1, result!.TotalItems);
+        Assert.Equal("Ana Garcia", result.Items.Single().Name);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithInvalidPageSize_Returns400ProblemDetails()
     {
         var response = await Client.GetAsync("/api/User?pageSize=0");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
-        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
 
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Errors, Is.Not.Empty);
+        Assert.NotEmpty(problem!.Errors);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithUnknownId_Returns404ProblemDetails()
     {
         var response = await Client.GetAsync("/api/User?id=9999");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(problem!.Detail, Does.Contain("9999"));
-            Assert.That(problem.Extensions["code"]?.ToString(), Is.EqualTo("not_found"));
-        });
+        Assert.Contains("9999", problem!.Detail);
+        Assert.Equal("not_found", problem.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Get_PaginatesAndReturnsPagedMetadata()
     {
         for (int i = 1; i <= 3; i++)
@@ -152,35 +144,29 @@ public class UserApiTests : IntegrationTestBase
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<UserListViewModel>>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result!.TotalItems, Is.EqualTo(3));
-            Assert.That(result.TotalPages, Is.EqualTo(2));
-            Assert.That(result.Page, Is.EqualTo(2));
-            Assert.That(result.Items.Single().Name, Is.EqualTo("User 1"));
-            Assert.That(result.HasPreviousPage, Is.True);
-            Assert.That(result.HasNextPage, Is.False);
-        });
+        Assert.Equal(3, result!.TotalItems);
+        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(2, result.Page);
+        Assert.Equal("User 1", result.Items.Single().Name);
+        Assert.True(result.HasPreviousPage);
+        Assert.False(result.HasNextPage);
     }
 
-    [Test]
+    [Fact]
     public async Task Post_ValidUser_Returns201_WithoutPasswordInBody()
     {
         var response = await Client.PostAsJsonAsync("/api/User", NewPayload(), JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
-        Assert.That(response.Headers.Location, Is.Not.Null);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
 
         var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(body, Does.Not.Contain("password").IgnoreCase);
-            Assert.That(body, Does.Not.Contain("Secret123!"));
-        });
+        Assert.DoesNotContain("password", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Secret123!", body);
     }
 
-    [Test]
+    [Fact]
     public async Task Post_InvalidPayload_Returns400()
     {
         var response = await Client.PostAsJsonAsync(
@@ -188,24 +174,24 @@ public class UserApiTests : IntegrationTestBase
             new { Name = "A", Email = "not-an-email", Password = "123" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Post_DuplicateEmail_Returns400()
     {
         await CreateUserAsync("dup@test.com");
 
         var response = await Client.PostAsJsonAsync("/api/User", NewPayload("dup@test.com"), JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("validation_error"));
+        Assert.Equal("validation_error", problem!.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Put_UnknownId_Returns404()
     {
         var response = await Client.PutAsJsonAsync(
@@ -213,10 +199,10 @@ public class UserApiTests : IntegrationTestBase
             new { Name = "Ghost", Email = "ghost@test.com" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Put_ExistingUser_UpdatesAndReturns200()
     {
         var created = await CreateUserAsync("update@test.com", "Original Name");
@@ -227,32 +213,32 @@ public class UserApiTests : IntegrationTestBase
             new { Name = "Updated Name", Email = "update@test.com" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var updated = await response.Content.ReadFromJsonAsync<UserViewModel>(JsonOptions);
 
-        Assert.That(updated!.Name, Is.EqualTo("Updated Name"));
+        Assert.Equal("Updated Name", updated!.Name);
     }
 
-    [Test]
+    [Fact]
     public async Task Delete_ThenGetList_ExcludesSoftDeletedUser()
     {
         var created = await CreateUserAsync("delete@test.com");
         var id = created.GetProperty("id").GetInt32();
 
         var deleteResponse = await Client.DeleteAsync($"/api/User/{id}");
-        Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         var listResponse = await Client.GetAsync("/api/User");
         var result = await listResponse.Content.ReadFromJsonAsync<PagedResult<UserListViewModel>>(JsonOptions);
 
-        Assert.That(result!.TotalItems, Is.Zero, "El usuario borrado lógicamente no debe aparecer en el listado.");
+        Assert.True(result!.TotalItems == 0, "El usuario borrado lógicamente no debe aparecer en el listado.");
 
         var deleteAgain = await Client.DeleteAsync($"/api/User/{id}");
-        Assert.That(deleteAgain.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, deleteAgain.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Post_WithEmailOfSoftDeletedUser_Succeeds()
     {
         var created = await CreateUserAsync("reuse@test.com");
@@ -262,7 +248,7 @@ public class UserApiTests : IntegrationTestBase
 
         var response = await Client.PostAsJsonAsync("/api/User", NewPayload("reuse@test.com"), JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created),
+        Assert.True(response.StatusCode == HttpStatusCode.Created,
             "El índice único filtrado permite reutilizar correos de usuarios dados de baja.");
     }
 }

@@ -9,6 +9,10 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <!-- WebApplicationFactory<T> para arrancar la API en memoria. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.8" />
+    <!-- SQLite en memoria sustituye a PostgreSQL dentro de las pruebas. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
@@ -16,6 +20,15 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DTOs y casos de uso viven en src/Api (puente de la migración). -->
+    <ProjectReference Include="..\Api\Api.csproj" />
+    <!-- AppDbContext y los repositorios concretos viven en WMS.Infrastructure. -->
+    <ProjectReference Include="..\WMS.Infrastructure\WMS.Infrastructure.csproj" />
+    <!-- Program (el host) vive en WMS.Api: es el tipo de WebApplicationFactory<T>. -->
+    <ProjectReference Include="..\WMS.Api\WMS.Api.csproj" />
   </ItemGroup>
 
 </Project>

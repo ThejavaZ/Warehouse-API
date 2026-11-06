@@ -6,17 +6,18 @@ using Api.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
-[TestFixture]
-public class InventoryApiTests : IntegrationTestBase
+public class InventoryApiTests : IntegrationTestBase, IClassFixture<WarehouseApiFactory>
 {
+    public InventoryApiTests(WarehouseApiFactory factory) : base(factory) { }
+
     private int _warehouseId;
     private int _productId;
 
-    [SetUp]
-    public async Task SetUp()
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await ClearDatabaseAsync();
         await AuthenticateAsync();
 
@@ -37,54 +38,51 @@ public class InventoryApiTests : IntegrationTestBase
             Movement(quantity),
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         return await ReadJsonAsync(response);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithoutToken_Returns401()
     {
         Client.DefaultRequestHeaders.Authorization = null;
 
         var response = await Client.GetAsync("/api/InventoryItem");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Restock_NewItem_CreatesRecordWithQuantity()
     {
         var item = await PostMovementAsync("restock", 10);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(item.GetProperty("quantity").GetInt32(), Is.EqualTo(10));
-            Assert.That(item.GetProperty("warehouseId").GetInt32(), Is.EqualTo(_warehouseId));
-            Assert.That(item.GetProperty("productId").GetInt32(), Is.EqualTo(_productId));
-        });
+        Assert.Equal(10, item.GetProperty("quantity").GetInt32());
+        Assert.Equal(_warehouseId, item.GetProperty("warehouseId").GetInt32());
+        Assert.Equal(_productId, item.GetProperty("productId").GetInt32());
     }
 
-    [Test]
+    [Fact]
     public async Task Restock_Twice_AccumulatesQuantity()
     {
         await PostMovementAsync("restock", 10);
         var item = await PostMovementAsync("restock", 5);
 
-        Assert.That(item.GetProperty("quantity").GetInt32(), Is.EqualTo(15));
+        Assert.Equal(15, item.GetProperty("quantity").GetInt32());
     }
 
-    [Test]
+    [Fact]
     public async Task Consume_ReducesQuantity()
     {
         await PostMovementAsync("restock", 10);
 
         var item = await PostMovementAsync("consume", 4);
 
-        Assert.That(item.GetProperty("quantity").GetInt32(), Is.EqualTo(6));
+        Assert.Equal(6, item.GetProperty("quantity").GetInt32());
     }
 
-    [Test]
+    [Fact]
     public async Task Consume_InsufficientStock_Returns409ProblemDetails()
     {
         await PostMovementAsync("restock", 3);
@@ -94,22 +92,22 @@ public class InventoryApiTests : IntegrationTestBase
             Movement(10),
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
-        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("insufficient_stock"));
+        Assert.Equal("insufficient_stock", problem!.Extensions["code"]?.ToString());
 
         // El saldo no cambia cuando el consumo se rechaza.
         var listResponse = await Client.GetAsync(
             $"/api/InventoryItem?warehouseId={_warehouseId}&productId={_productId}");
         var result = await listResponse.Content.ReadFromJsonAsync<PagedResult<InventoryItemViewModel>>(JsonOptions);
 
-        Assert.That(result!.Items.Single().Quantity, Is.EqualTo(3));
+        Assert.Equal(3, result!.Items.Single().Quantity);
     }
 
-    [Test]
+    [Fact]
     public async Task Consume_WithoutStockRecord_Returns404()
     {
         var response = await Client.PostAsJsonAsync(
@@ -117,14 +115,14 @@ public class InventoryApiTests : IntegrationTestBase
             Movement(1),
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("no_stock_record"));
+        Assert.Equal("no_stock_record", problem!.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Restock_UnknownWarehouse_Returns404()
     {
         var response = await Client.PostAsJsonAsync(
@@ -132,10 +130,10 @@ public class InventoryApiTests : IntegrationTestBase
             new { WarehouseId = 9999, ProductId = _productId, Quantity = 1 },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Restock_ZeroQuantity_Returns400()
     {
         var response = await Client.PostAsJsonAsync(
@@ -143,14 +141,14 @@ public class InventoryApiTests : IntegrationTestBase
             Movement(0),
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Errors, Is.Not.Empty);
+        Assert.NotEmpty(problem!.Errors);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_FiltersByWarehouseAndProduct_AndResolvesNames()
     {
         await PostMovementAsync("restock", 10);
@@ -158,22 +156,19 @@ public class InventoryApiTests : IntegrationTestBase
         var response = await Client.GetAsync(
             $"/api/InventoryItem?warehouseId={_warehouseId}&productId={_productId}");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<InventoryItemViewModel>>(JsonOptions);
         var item = result!.Items.Single();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.TotalItems, Is.EqualTo(1));
-            Assert.That(item.Quantity, Is.EqualTo(10));
-            Assert.That(item.WarehouseName, Is.EqualTo("Almacén Central"));
-            Assert.That(item.ProductSku, Is.EqualTo("SKU-INV-1"));
-            Assert.That(item.ProductName, Is.EqualTo("Martillo"));
-        });
+        Assert.Equal(1, result.TotalItems);
+        Assert.Equal(10, item.Quantity);
+        Assert.Equal("Almacén Central", item.WarehouseName);
+        Assert.Equal("SKU-INV-1", item.ProductSku);
+        Assert.Equal("Martillo", item.ProductName);
     }
 
-    [Test]
+    [Fact]
     public async Task Movement_OnInactiveWarehouse_Returns400()
     {
         using (var scope = Factory.Services.CreateScope())
@@ -188,10 +183,10 @@ public class InventoryApiTests : IntegrationTestBase
             Movement(1),
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("inactive_warehouse"));
+        Assert.Equal("inactive_warehouse", problem!.Extensions["code"]?.ToString());
     }
 }

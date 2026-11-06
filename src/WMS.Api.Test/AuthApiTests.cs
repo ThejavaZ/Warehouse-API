@@ -2,18 +2,23 @@ using System.Net;
 using System.Net.Http.Json;
 using Api.Auth;
 using Api.Common;
+using Api.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
-[TestFixture]
-public class AuthApiTests : IntegrationTestBase
+public class AuthApiTests : IntegrationTestBase, IClassFixture<WarehouseApiFactory>
 {
-    [SetUp]
-    public Task SetUp() => ClearDatabaseAsync();
+    public AuthApiTests(WarehouseApiFactory factory) : base(factory) { }
 
-    [Test]
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        await ClearDatabaseAsync();
+    }
+
+    [Fact]
     public async Task Register_Returns201_WithoutPasswordInBody()
     {
         var response = await Client.PostAsJsonAsync(
@@ -21,18 +26,15 @@ public class AuthApiTests : IntegrationTestBase
             new { Name = "Nuevo", Email = "nuevo@test.com", Password = "Secret123!" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(body, Does.Not.Contain("password").IgnoreCase);
-            Assert.That(body, Does.Not.Contain("Secret123!"));
-        });
+        Assert.DoesNotContain("password", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Secret123!", body);
     }
 
-    [Test]
+    [Fact]
     public async Task Register_DuplicateEmail_Returns400()
     {
         await RegisterUserAsync("dup@test.com");
@@ -42,27 +44,27 @@ public class AuthApiTests : IntegrationTestBase
             new { Name = "Otro", Email = "dup@test.com", Password = "Secret123!" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Login_ValidCredentials_ReturnsTokens()
     {
         await RegisterUserAsync("user@test.com");
 
         var login = await LoginAsync("user@test.com");
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(login.GetProperty("accessToken").GetString(), Is.Not.Null.And.Not.Empty);
-            Assert.That(login.GetProperty("refreshToken").GetString(), Is.Not.Null.And.Not.Empty);
-            Assert.That(login.GetProperty("expiresIn").GetInt32(), Is.GreaterThan(0));
-            Assert.That(login.GetProperty("tokenType").GetString(), Is.EqualTo("Bearer"));
-            Assert.That(login.TryGetProperty("password", out _), Is.False, "Nunca debe devolverse la contraseña.");
-        });
+        Assert.NotNull(login.GetProperty("accessToken").GetString());
+
+        Assert.NotEmpty(login.GetProperty("accessToken").GetString()!);
+        Assert.NotNull(login.GetProperty("refreshToken").GetString());
+        Assert.NotEmpty(login.GetProperty("refreshToken").GetString()!);
+        Assert.True(login.GetProperty("expiresIn").GetInt32() > 0);
+        Assert.Equal("Bearer", login.GetProperty("tokenType").GetString());
+        Assert.False(login.TryGetProperty("password", out _), "Nunca debe devolverse la contraseña.");
     }
 
-    [Test]
+    [Fact]
     public async Task Login_WrongPassword_Returns401ProblemDetails()
     {
         await RegisterUserAsync("user@test.com");
@@ -72,15 +74,15 @@ public class AuthApiTests : IntegrationTestBase
             new { Email = "user@test.com", Password = "WrongPass123!" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("invalid_credentials"));
+        Assert.Equal("invalid_credentials", problem!.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Login_UnknownEmail_Returns401()
     {
         var response = await Client.PostAsJsonAsync(
@@ -88,10 +90,10 @@ public class AuthApiTests : IntegrationTestBase
             new { Email = "ghost@test.com", Password = "Whatever123!" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Login_SoftDeletedUser_Returns401()
     {
         await RegisterUserAsync("baja@test.com");
@@ -108,33 +110,33 @@ public class AuthApiTests : IntegrationTestBase
             new { Email = "baja@test.com", Password = "Secret123!" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Me_WithToken_ReturnsCurrentUser()
     {
         await AuthenticateAsync("me@test.com");
 
         var response = await Client.GetAsync("/api/Auth/me");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var user = await response.Content.ReadFromJsonAsync<Api.Users.UserViewModel>(JsonOptions);
+        var user = await response.Content.ReadFromJsonAsync<UserViewModel>(JsonOptions);
 
-        Assert.That(user!.Email, Is.EqualTo("me@test.com"));
+        Assert.Equal("me@test.com", user!.Email);
     }
 
-    [Test]
+    [Fact]
     public async Task Me_WithoutToken_Returns401()
     {
         var response = await Client.GetAsync("/api/Auth/me");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
-        Assert.That(response.Content.Headers.ContentType!.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
     }
 
-    [Test]
+    [Fact]
     public async Task Refresh_ReturnsNewTokens_AndOldRefreshBecomesUnusable()
     {
         var login = await AuthenticateAsync("rotate@test.com");
@@ -145,7 +147,7 @@ public class AuthApiTests : IntegrationTestBase
             new { RefreshToken = oldRefreshToken },
             JsonOptions);
 
-        Assert.That(refreshResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
 
         // Reutilizar el token rotado debe fallar: así se detecta un refresh token robado.
         var reuseResponse = await Client.PostAsJsonAsync(
@@ -153,10 +155,10 @@ public class AuthApiTests : IntegrationTestBase
             new { RefreshToken = oldRefreshToken },
             JsonOptions);
 
-        Assert.That(reuseResponse.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, reuseResponse.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Revoke_ThenRefresh_Returns401()
     {
         var login = await AuthenticateAsync("logout@test.com");
@@ -167,17 +169,17 @@ public class AuthApiTests : IntegrationTestBase
             new { RefreshToken = refreshToken },
             JsonOptions);
 
-        Assert.That(revokeResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
 
         var refreshResponse = await Client.PostAsJsonAsync(
             "/api/Auth/refresh",
             new { RefreshToken = refreshToken },
             JsonOptions);
 
-        Assert.That(refreshResponse.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task ProtectedEndpoint_WithTamperedToken_Returns401()
     {
         await AuthenticateAsync("tamper@test.com");
@@ -191,10 +193,10 @@ public class AuthApiTests : IntegrationTestBase
 
         var response = await Client.GetAsync("/api/User");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task ChangingPassword_RevokesUsersRefreshTokens()
     {
         var login = await AuthenticateAsync("cambio@test.com");
@@ -206,14 +208,14 @@ public class AuthApiTests : IntegrationTestBase
             new { Name = "Test User", Email = "cambio@test.com", Password = "NuevaClave456!" },
             JsonOptions);
 
-        Assert.That(changePassword.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, changePassword.StatusCode);
 
         var refreshResponse = await Client.PostAsJsonAsync(
             "/api/Auth/refresh",
             new { RefreshToken = refreshToken },
             JsonOptions);
 
-        Assert.That(refreshResponse.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized),
+        Assert.True(refreshResponse.StatusCode == HttpStatusCode.Unauthorized,
             "Cambiar la contraseña debe cerrar las sesiones abiertas.");
     }
 }

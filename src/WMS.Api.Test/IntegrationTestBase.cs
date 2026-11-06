@@ -5,44 +5,41 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using WMS.Infrastructure.Persistence;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
 /// <summary>
-/// Base de las pruebas de integración: arranca la API completa (SQLite en memoria),
-/// limpia la base entre pruebas y ofrece helpers para registrar, autenticar y crear recursos.
+/// Base de las pruebas de integración (xUnit). El host de pruebas entra como fixture de
+/// clase —una sola instancia por clase de test— y cada prueba recibe un <c>HttpClient</c>
+/// nuevo, sin Bearer, con la base limpia y la sesión montada en <c>InitializeAsync</c>.
 /// </summary>
-public abstract class IntegrationTestBase
+public abstract class IntegrationTestBase : IAsyncLifetime
 {
     protected static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    protected WarehouseApiFactory Factory = null!;
-    protected HttpClient Client = null!;
+    protected WarehouseApiFactory Factory { get; }
+    protected HttpClient Client { get; }
 
-    [OneTimeSetUp]
-    public void BaseOneTimeSetUp()
+    protected IntegrationTestBase(WarehouseApiFactory factory)
     {
-        Factory = CreateFactory();
-        Client = Factory.CreateClient();
+        Factory = factory;
+        Client = factory.CreateClient();
     }
 
     /// <summary>
-    /// Cada prueba arranca sin Bearer: los fixtures que necesiten sesión lo montan en su
-    /// propio <c>SetUp</c>, así un token de una prueba anterior no contamina a la siguiente.
+    /// Equivalente al <c>[SetUp]</c> de NUnit: xUnit lo ejecuta antes de cada prueba.
+    /// El cliente es nuevo en cada prueba, así que nunca arrastra el Bearer de la anterior.
     /// </summary>
-    [SetUp]
-    public void BaseSetUp()
+    public virtual Task InitializeAsync()
     {
         Client.DefaultRequestHeaders.Authorization = null;
+        return Task.CompletedTask;
     }
 
-    /// <summary>Fábrica del host de pruebas; se puede sobrescribir para diagnósticos.</summary>
-    protected virtual WarehouseApiFactory CreateFactory() => new WarehouseApiFactory();
-
-    [OneTimeTearDown]
-    public void BaseOneTimeTearDown()
+    /// <summary>Libera el cliente de esta prueba (xUnit lo ejecuta tras cada prueba).</summary>
+    public virtual Task DisposeAsync()
     {
         Client.Dispose();
-        Factory.Dispose();
+        return Task.CompletedTask;
     }
 
     /// <summary>Limpia las tablas del negocio entre pruebas (en orden por claves ajenas).</summary>
@@ -69,7 +66,7 @@ public abstract class IntegrationTestBase
             new { Name = name, Email = email, Password = password },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return await ReadJsonAsync(response);
     }
@@ -96,7 +93,7 @@ public abstract class IntegrationTestBase
             new { Email = email, Password = password },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         return await ReadJsonAsync(response);
     }
@@ -111,7 +108,7 @@ public abstract class IntegrationTestBase
             new { SKU = sku, Name = name, Price = price },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return await ReadJsonAsync(response);
     }
@@ -123,7 +120,7 @@ public abstract class IntegrationTestBase
             new { Name = name, Location = location },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         return await ReadJsonAsync(response);
     }

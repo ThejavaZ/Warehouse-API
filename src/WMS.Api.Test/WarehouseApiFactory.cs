@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WMS.Infrastructure.Persistence;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
 /// <summary>
 /// Arranca la API completa en memoria: reemplaza PostgreSQL por SQLite en memoria,

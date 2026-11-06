@@ -5,29 +5,30 @@ using Api.Products;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
-[TestFixture]
-public class ProductApiTests : IntegrationTestBase
+public class ProductApiTests : IntegrationTestBase, IClassFixture<WarehouseApiFactory>
 {
-    [SetUp]
-    public async Task SetUp()
+    public ProductApiTests(WarehouseApiFactory factory) : base(factory) { }
+
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await ClearDatabaseAsync();
         await AuthenticateAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithoutToken_Returns401()
     {
         Client.DefaultRequestHeaders.Authorization = null;
 
         var response = await Client.GetAsync("/api/Product");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Post_Returns201_WithServerFields()
     {
         var response = await Client.PostAsJsonAsync(
@@ -35,21 +36,18 @@ public class ProductApiTests : IntegrationTestBase
             new { SKU = "SKU-001", Name = "Martillo", Description = "Cabeza de acero", Price = 12.99m },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
-        Assert.That(response.Headers.Location, Is.Not.Null);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
 
         var created = await ReadJsonAsync(response);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(created.GetProperty("id").GetInt32(), Is.GreaterThan(0));
-            Assert.That(created.GetProperty("sku").GetString(), Is.EqualTo("SKU-001"));
-            Assert.That(created.GetProperty("price").GetDecimal(), Is.EqualTo(12.99m));
-            Assert.That(created.GetProperty("isActive").GetBoolean(), Is.True);
-        });
+        Assert.True(created.GetProperty("id").GetInt32() > 0);
+        Assert.Equal("SKU-001", created.GetProperty("sku").GetString());
+        Assert.Equal(12.99m, created.GetProperty("price").GetDecimal());
+        Assert.True(created.GetProperty("isActive").GetBoolean());
     }
 
-    [Test]
+    [Fact]
     public async Task Post_DuplicateSku_Returns400()
     {
         await CreateProductAsync("DUP-01");
@@ -59,14 +57,14 @@ public class ProductApiTests : IntegrationTestBase
             new { SKU = "DUP-01", Name = "Otro", Price = 5m },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("validation_error"));
+        Assert.Equal("validation_error", problem!.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Post_InvalidPayload_Returns400()
     {
         var response = await Client.PostAsJsonAsync(
@@ -74,14 +72,14 @@ public class ProductApiTests : IntegrationTestBase
             new { SKU = "X", Name = "A", Price = -1m },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Errors, Is.Not.Empty);
+        Assert.NotEmpty(problem!.Errors);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithId_ReturnsDetail()
     {
         var created = await CreateProductAsync("DET-01", "Sierra");
@@ -89,14 +87,14 @@ public class ProductApiTests : IntegrationTestBase
 
         var response = await Client.GetAsync($"/api/Product?id={id}");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var product = await response.Content.ReadFromJsonAsync<ProductViewModel>(JsonOptions);
 
-        Assert.That(product!.Name, Is.EqualTo("Sierra"));
+        Assert.Equal("Sierra", product!.Name);
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithSearchAndIsActive_CombinesFilters()
     {
         await CreateProductAsync("MART-01", "Martillo");
@@ -113,14 +111,11 @@ public class ProductApiTests : IntegrationTestBase
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<ProductListViewModel>>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result!.TotalItems, Is.EqualTo(1));
-            Assert.That(result.Items.Single().SKU, Is.EqualTo("MART-01"));
-        });
+        Assert.Equal(1, result!.TotalItems);
+        Assert.Equal("MART-01", result.Items.Single().SKU);
     }
 
-    [Test]
+    [Fact]
     public async Task Put_UnknownId_Returns404()
     {
         var response = await Client.PutAsJsonAsync(
@@ -128,10 +123,10 @@ public class ProductApiTests : IntegrationTestBase
             new { SKU = "GHOST-01", Name = "Ghost", Price = 1m },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Put_ExistingProduct_UpdatesAndReturns200()
     {
         var created = await CreateProductAsync("UPD-01", "Original");
@@ -142,45 +137,42 @@ public class ProductApiTests : IntegrationTestBase
             new { SKU = "UPD-01", Name = "Renombrado", Description = "Nueva", Price = 20.5m },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var updated = await response.Content.ReadFromJsonAsync<ProductViewModel>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(updated!.Name, Is.EqualTo("Renombrado"));
-            Assert.That(updated.Price, Is.EqualTo(20.5m));
-        });
+        Assert.Equal("Renombrado", updated!.Name);
+        Assert.Equal(20.5m, updated.Price);
     }
 
-    [Test]
+    [Fact]
     public async Task Delete_ThenGetList_ExcludesSoftDeleted_AndSkuBecomesReusable()
     {
         var created = await CreateProductAsync("DEL-01");
         var id = created.GetProperty("id").GetInt32();
 
         var deleteResponse = await Client.DeleteAsync($"/api/Product/{id}");
-        Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         var listResponse = await Client.GetAsync("/api/Product");
         var result = await listResponse.Content.ReadFromJsonAsync<PagedResult<ProductListViewModel>>(JsonOptions);
 
-        Assert.That(result!.TotalItems, Is.Zero, "El producto borrado lógicamente no debe aparecer.");
+        Assert.True(result!.TotalItems == 0, "El producto borrado lógicamente no debe aparecer.");
 
         var reuseResponse = await Client.PostAsJsonAsync(
             "/api/Product",
             new { SKU = "DEL-01", Name = "Reutilizado", Price = 1m },
             JsonOptions);
 
-        Assert.That(reuseResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created),
+        Assert.True(reuseResponse.StatusCode == HttpStatusCode.Created,
             "El índice único filtrado permite reutilizar el SKU de un producto dado de baja.");
     }
 
-    [Test]
+    [Fact]
     public async Task Delete_UnknownId_Returns404()
     {
         var response = await Client.DeleteAsync("/api/Product/9999");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

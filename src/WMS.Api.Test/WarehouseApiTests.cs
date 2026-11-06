@@ -5,29 +5,30 @@ using Api.Warehouses;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Api.Test.Integration;
+namespace WMS.Api.Test;
 
-[TestFixture]
-public class WarehouseApiTests : IntegrationTestBase
+public class WarehouseApiTests : IntegrationTestBase, IClassFixture<WarehouseApiFactory>
 {
-    [SetUp]
-    public async Task SetUp()
+    public WarehouseApiTests(WarehouseApiFactory factory) : base(factory) { }
+
+    public override async Task InitializeAsync()
     {
+        await base.InitializeAsync();
         await ClearDatabaseAsync();
         await AuthenticateAsync();
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithoutToken_Returns401()
     {
         Client.DefaultRequestHeaders.Authorization = null;
 
         var response = await Client.GetAsync("/api/Warehouse");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Post_Returns201()
     {
         var response = await Client.PostAsJsonAsync(
@@ -35,19 +36,16 @@ public class WarehouseApiTests : IntegrationTestBase
             new { Name = "Almacén Norte", Location = "Bilbao" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var created = await ReadJsonAsync(response);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(created.GetProperty("name").GetString(), Is.EqualTo("Almacén Norte"));
-            Assert.That(created.GetProperty("location").GetString(), Is.EqualTo("Bilbao"));
-            Assert.That(created.GetProperty("isActive").GetBoolean(), Is.True);
-        });
+        Assert.Equal("Almacén Norte", created.GetProperty("name").GetString());
+        Assert.Equal("Bilbao", created.GetProperty("location").GetString());
+        Assert.True(created.GetProperty("isActive").GetBoolean());
     }
 
-    [Test]
+    [Fact]
     public async Task Post_DuplicateName_Returns400()
     {
         await CreateWarehouseAsync("Duplicado");
@@ -57,14 +55,14 @@ public class WarehouseApiTests : IntegrationTestBase
             new { Name = "Duplicado" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOptions);
 
-        Assert.That(problem!.Extensions["code"]?.ToString(), Is.EqualTo("validation_error"));
+        Assert.Equal("validation_error", problem!.Extensions["code"]?.ToString());
     }
 
-    [Test]
+    [Fact]
     public async Task Get_WithSearch_FindsByNameOrLocation()
     {
         await CreateWarehouseAsync("Norte", "Bilbao");
@@ -74,14 +72,11 @@ public class WarehouseApiTests : IntegrationTestBase
 
         var result = await response.Content.ReadFromJsonAsync<PagedResult<WarehouseListViewModel>>(JsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result!.TotalItems, Is.EqualTo(1));
-            Assert.That(result.Items.Single().Name, Is.EqualTo("Norte"));
-        });
+        Assert.Equal(1, result!.TotalItems);
+        Assert.Equal("Norte", result.Items.Single().Name);
     }
 
-    [Test]
+    [Fact]
     public async Task Put_ExistingWarehouse_UpdatesAndReturns200()
     {
         var created = await CreateWarehouseAsync("Original");
@@ -92,14 +87,14 @@ public class WarehouseApiTests : IntegrationTestBase
             new { Name = "Renombrado", Location = "Valencia" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var updated = await response.Content.ReadFromJsonAsync<WarehouseViewModel>(JsonOptions);
 
-        Assert.That(updated!.Name, Is.EqualTo("Renombrado"));
+        Assert.Equal("Renombrado", updated!.Name);
     }
 
-    [Test]
+    [Fact]
     public async Task Put_UnknownId_Returns404()
     {
         var response = await Client.PutAsJsonAsync(
@@ -107,28 +102,28 @@ public class WarehouseApiTests : IntegrationTestBase
             new { Name = "Ghost" },
             JsonOptions);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [Test]
+    [Fact]
     public async Task Delete_ThenNameBecomesReusable()
     {
         var created = await CreateWarehouseAsync("Borrable");
         var id = created.GetProperty("id").GetInt32();
 
         var deleteResponse = await Client.DeleteAsync($"/api/Warehouse/{id}");
-        Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         var listResponse = await Client.GetAsync("/api/Warehouse");
         var result = await listResponse.Content.ReadFromJsonAsync<PagedResult<WarehouseListViewModel>>(JsonOptions);
 
-        Assert.That(result!.TotalItems, Is.Zero);
+        Assert.Equal(0, result!.TotalItems);
 
         var reuseResponse = await Client.PostAsJsonAsync(
             "/api/Warehouse",
             new { Name = "Borrable" },
             JsonOptions);
 
-        Assert.That(reuseResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.Equal(HttpStatusCode.Created, reuseResponse.StatusCode);
     }
 }
