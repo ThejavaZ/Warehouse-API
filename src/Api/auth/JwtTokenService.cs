@@ -2,9 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Api.Users;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using WMS.Domain.Entities;
 
 namespace Api.Auth;
 
@@ -30,7 +30,7 @@ public class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Name),
+            new(ClaimTypes.Name, user.Name!), // Name es NOT NULL en BD (UserConfiguration); Model lo declara string?
             new(ClaimTypes.Email, user.Email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

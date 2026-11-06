@@ -25,6 +25,10 @@
   <ItemGroup>
     <!-- DTOs y casos de uso viven en src/Api (puente de la migración). -->
     <ProjectReference Include="..\Api\Api.csproj" />
+    <!-- DTOs y casos de uso (UserViewModel, UserCreateDTO…) viven en WMS.Application. -->
+    <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
+    <!-- Entidades (User, RefreshToken) que siembran las pruebas. -->
+    <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
     <!-- AppDbContext y los repositorios concretos viven en WMS.Infrastructure. -->
     <ProjectReference Include="..\WMS.Infrastructure\WMS.Infrastructure.csproj" />
     <!-- Program (el host) vive en WMS.Api: es el tipo de WebApplicationFactory<T>. -->

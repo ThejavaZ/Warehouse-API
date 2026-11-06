@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using Api.Common;
 using Api.Products;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using WMS.Application.Common;
 
 namespace WMS.Api.Test;
 

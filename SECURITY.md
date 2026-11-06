@@ -7,10 +7,10 @@ Gracias por dedicar tiempo a mejorar la seguridad de este proyecto.
 Solo se mantiene la rama principal (`main`). No se publican versiones
 etiquetadas; los parches se aplican directamente en `main`.
 
-| Versión | Soporte |
-|---|---|
-| `main` | ✅ |
-| Cualquier otra rama o fork | ❌ |
+| Versión                    | Soporte |
+| -------------------------- | ------- |
+| `main`                     | ✅      |
+| Cualquier otra rama o fork | ❌      |
 
 ## Reportar una vulnerabilidad
 

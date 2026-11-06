@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using WMS.Domain.Entities;
+
 namespace Api.Auth;
 
 public class RefreshTokenDTO

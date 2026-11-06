@@ -1,8 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Api.Auth;
-using Api.Users;
 using Microsoft.Extensions.Options;
+using WMS.Domain.Entities;
 
 namespace Api.Test;
 

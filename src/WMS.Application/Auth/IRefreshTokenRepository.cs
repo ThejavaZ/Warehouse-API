@@ -1,4 +1,6 @@
-namespace Api.Auth;
+using WMS.Domain.Entities;
+
+namespace WMS.Application.Auth;
 
 public interface IRefreshTokenRepository
 {

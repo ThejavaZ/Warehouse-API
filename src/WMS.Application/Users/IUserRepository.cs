@@ -1,4 +1,6 @@
-namespace Api.Users;
+using WMS.Domain.Entities;
+
+namespace WMS.Application.Users;
 
 public interface IUserRepository
 {

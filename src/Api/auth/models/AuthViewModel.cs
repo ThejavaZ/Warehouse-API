@@ -1,3 +1,5 @@
+using WMS.Domain.Entities;
+
 namespace Api.Auth;
 
 /// <summary>Respuesta de login y refresh: access token corto + refresh token opaco rotatorio.</summary>

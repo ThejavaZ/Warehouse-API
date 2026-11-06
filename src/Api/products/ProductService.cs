@@ -1,4 +1,4 @@
-using Api.Common;
+using WMS.Application.Common;
 
 namespace Api.Products;
 

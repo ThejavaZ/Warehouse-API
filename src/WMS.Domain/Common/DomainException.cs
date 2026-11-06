@@ -1,4 +1,4 @@
-namespace Api.Common;
+namespace WMS.Domain.Common;
 
 public class DomainException : Exception
 {

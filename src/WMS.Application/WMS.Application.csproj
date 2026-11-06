@@ -4,4 +4,17 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Entidades (User, RefreshToken): los casos de uso las reciben y devuelven. -->
+    <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      IPasswordHasher<User> (UserService) vive en Microsoft.Extensions.Identity.Core:
+      es la abstracción de Identity, no infraestructura.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.0" />
+  </ItemGroup>
+
 </Project>

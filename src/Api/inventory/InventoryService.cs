@@ -1,6 +1,7 @@
-using Api.Common;
 using Api.Products;
 using Api.Warehouses;
+using WMS.Application.Common;
+using WMS.Domain.Common;
 
 namespace Api.Inventory;
 

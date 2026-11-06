@@ -1,7 +1,8 @@
 using System.Reflection;
 using Api.Security;
 using Api.Test.Fakes;
-using Api.Users;
+using WMS.Application.Users;
+using WMS.Domain.Entities;
 
 namespace Api.Test;
 
@@ -371,7 +372,7 @@ public class UserServiceTests
 
     private void SeedRefreshToken(int userId)
     {
-        _refreshTokens.Tokens.Add(new Api.Auth.RefreshToken
+        _refreshTokens.Tokens.Add(new WMS.Domain.Entities.RefreshToken
         {
             Id = 1,
             Token = "stored-hash",

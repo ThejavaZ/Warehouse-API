@@ -1,9 +1,9 @@
 using System.Text.Json;
-using Api.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using WMS.Api.Middleware;
+using WMS.Domain.Common;
 
 namespace Api.Test;
 

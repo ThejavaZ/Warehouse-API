@@ -24,8 +24,12 @@ completa y sus alternativas.
    terminado: rutas, códigos de estado y shape de respuestas son la fuente de
    verdad. Si algo obligara a romperlo, se detiene la migración y se coordina
    con el cliente en el mismo ciclo.
-2. **El esquema de BD está congelado.** Ningún cambio de modelo que exija una
-   migración nueva. Gate: `dotnet ef migrations has-pending-model-changes`
+2. **El esquema de BD está congelado salvo migración explícita aprobada.**
+   Prohibidas las migraciones sorpresa: si un módulo exige una — precedente
+   T9, `users.description` heredada de `Model`, columna nueva, aditiva,
+   nullable y reversible, sin efecto sobre el contrato HTTP — se aprueba y
+   revisa en su tarea (su `Up()`/`Down()`) y el gate vuelve a verde. Gate:
+   `dotnet ef migrations has-pending-model-changes`
    debe responder *"No changes have been made to the model since the last
    migration"*.
 3. **Build y tests siempre en verde.** Cada tarea se cierra con la solución
@@ -49,20 +53,22 @@ completa y sus alternativas.
 | — | Adaptador `JwtTokenService` (código muerto, opción A) | ✅ | `75fd07f` |
 | T7 | Feature tests a xUnit en `WMS.Api.Test` (base, factory y 5 suites) | ✅ | `3a0f616` |
 | T8 | Limpieza tras el traslado de tests: docs, paquetes y recuentos | ✅ | este commit |
-| T9–T15 | Migrar los módulos (Users, Products, Warehouses, Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
+| T9 | Módulo Users completo a `WMS.Application` (servicio, interfaces y DTOs), entidad `User`/`RefreshToken` y `Api.Common` repartidos en `WMS.Domain`/`WMS.Application`, puerto `IRefreshTokenRepository` adelantado y migración `AddDescriptionToUsers` | ✅ | este commit |
+| T10–T15 | Migrar los módulos (Products, Warehouses, Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
 
-## Qué queda por mover (T9–T15) y por qué así
+## Qué queda por mover (T10–T15) y por qué así
 
 Hoy existe un **puente transitorio**: `WMS.Infrastructure` referencia a
-`src/Api` porque las entidades (`Api.Users.User`, `Api.Products.Product`, …) y
+`src/Api` porque las entidades (`Api.Products.Product`, `Api.Warehouses.Warehouse`, …) y
 los servicios siguen allí. Se resuelve módulo a módulo:
 
 - **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
   y los `Designer` de las migraciones referencian cada entidad por **nombre
-  completo en strings** (`modelBuilder.Entity("Api.Users.User")`). Renombrarlas
-  exige actualizar esos ficheros generados y pasar el gate del esquema; por eso
-  no se han movido todavía. (`WMS.Domain/Entities` ya contiene scaffolds
-  colisionantes — `User.cs`, `Product.cs`, `Warehouse.cs` — que se sustituyen
+  completo en strings** (`modelBuilder.Entity("Api.Products.Product")`).
+  Renombrarlas exige actualizar esos ficheros generados y pasar el gate del
+  esquema; T9 ya hizo ese trabajo para `User` y `RefreshToken`.
+  (`WMS.Domain/Entities` aún contiene scaffolds colisionantes —
+  `Product.cs`, `Warehouse.cs` — que se sustituyen
   al migrar cada módulo. `Movement.cs`, `DependencyInjection.cs` y
   `Persistence/AppDbContext.cs` estuvieron vacíos como marcadores; los dos
   primeros siguen esperando su módulo.)

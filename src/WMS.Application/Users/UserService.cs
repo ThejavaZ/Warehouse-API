@@ -1,8 +1,9 @@
-using Api.Auth;
-using Api.Common;
 using Microsoft.AspNetCore.Identity;
+using WMS.Application.Auth;
+using WMS.Application.Common;
+using WMS.Domain.Entities;
 
-namespace Api.Users;
+namespace WMS.Application.Users;
 
 public class UserService : IUserService
 {

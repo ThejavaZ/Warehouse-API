@@ -25,7 +25,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Api.Auth.RefreshToken", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -153,7 +153,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                     b.ToTable("products");
                 });
 
-            modelBuilder.Entity("Api.Users.User", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -443,9 +443,9 @@ namespace WMS.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Api.Auth.RefreshToken", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.RefreshToken", b =>
                 {
-                    b.HasOne("Api.Users.User", "User")
+                    b.HasOne("WMS.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

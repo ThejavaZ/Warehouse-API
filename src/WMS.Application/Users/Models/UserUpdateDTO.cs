@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Users;
+namespace WMS.Application.Users;
 
 public class UserUpdateDTO
 {

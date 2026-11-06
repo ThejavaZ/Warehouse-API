@@ -1,9 +1,10 @@
 using System.Security.Claims;
 using Api.Auth;
-using Api.Common;
-using Api.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WMS.Application.Users;
+using WMS.Domain.Common;
+using WMS.Domain.Entities;
 
 namespace WMS.Api.Controllers;
 

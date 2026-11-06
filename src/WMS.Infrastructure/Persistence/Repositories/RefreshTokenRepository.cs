@@ -1,5 +1,7 @@
 using Api.Auth;
 using Microsoft.EntityFrameworkCore;
+using WMS.Application.Auth;
+using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.Infrastructure.Persistence.Repositories;

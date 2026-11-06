@@ -1,8 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Api.Users;
 
-namespace Api.Auth;
+namespace WMS.Domain.Entities;
 
 /// <summary>
 /// Refresh token opaco almacenado como hash SHA-256: un volcado de la base de datos

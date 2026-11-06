@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using Api.Common;
-using Api.Users;
+using WMS.Application.Common;
+using WMS.Application.Users;
 
 namespace Api.Test;
 

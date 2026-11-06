@@ -1,4 +1,4 @@
-using Api.Users;
+using WMS.Domain.Entities;
 
 namespace Api.Auth;
 

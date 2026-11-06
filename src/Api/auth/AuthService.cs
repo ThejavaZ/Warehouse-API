@@ -1,7 +1,9 @@
-using Api.Common;
-using Api.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
+using WMS.Application.Auth;
+using WMS.Application.Users;
+using WMS.Domain.Common;
+using WMS.Domain.Entities;
 
 namespace Api.Auth;
 

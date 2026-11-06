@@ -1,4 +1,6 @@
 using Api.Auth;
+using WMS.Application.Auth;
+using WMS.Domain.Entities;
 
 namespace Api.Test.Fakes;
 

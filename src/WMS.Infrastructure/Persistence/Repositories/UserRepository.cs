@@ -1,6 +1,7 @@
-using Api.Common;
-using Api.Users;
 using Microsoft.EntityFrameworkCore;
+using WMS.Application.Common;
+using WMS.Application.Users;
+using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.Infrastructure.Persistence.Repositories;

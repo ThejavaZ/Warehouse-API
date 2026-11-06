@@ -1,4 +1,4 @@
-namespace Api.Users;
+namespace WMS.Application.Users;
 
 public class UserListViewModel
 {

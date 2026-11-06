@@ -6,16 +6,14 @@ public class Model
 {
     [Key]
     public int Id { get; set; }
-    [MaxLength(50)]
     public Guid UUID { get; set; } = Guid.NewGuid();
     [MaxLength(100)]
     public string? Name { get; set; }
     [MaxLength(500)]
     public string? Description { get; set; } = null;
-    public bool Status { get; set; } = true;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? DeletedAt { get; set; } = null;
+    public DateTime? SoftDelete { get; set; } = null;
 
 }

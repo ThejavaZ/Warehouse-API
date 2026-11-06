@@ -1,9 +1,10 @@
 using Api.Auth;
-using Api.Common;
 using Api.Security;
 using Api.Test.Fakes;
-using Api.Users;
 using Microsoft.Extensions.Options;
+using WMS.Application.Users;
+using WMS.Domain.Common;
+using WMS.Domain.Entities;
 
 namespace Api.Test;
 
@@ -125,7 +126,7 @@ public class AuthServiceTests
     {
         Assert.DoesNotThrowAsync(() => RegisterAndLoginAsync());
 
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.LoginAsync(new LoginDTO { Email = "user@test.com", Password = "WrongPass123!" }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));
@@ -134,10 +135,10 @@ public class AuthServiceTests
     [Test]
     public void LoginAsync_UnknownEmail_Throws401_WithSameMessage()
     {
-        var unknown = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var unknown = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.LoginAsync(new LoginDTO { Email = "ghost@test.com", Password = "Whatever123!" }));
 
-        var known = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var known = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.LoginAsync(new LoginDTO { Email = "user@test.com", Password = "Whatever123!" }));
 
         Assert.Multiple(() =>
@@ -154,7 +155,7 @@ public class AuthServiceTests
         await RegisterAndLoginAsync();
         _users.Users.Single().SoftDelete = DateTime.UtcNow;
 
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.LoginAsync(new LoginDTO { Email = "user@test.com", Password = "Secret123!" }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));
@@ -166,7 +167,7 @@ public class AuthServiceTests
         await RegisterAndLoginAsync();
         _users.Users.Single().IsActive = false;
 
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.LoginAsync(new LoginDTO { Email = "user@test.com", Password = "Secret123!" }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));
@@ -198,7 +199,7 @@ public class AuthServiceTests
         await _service.RefreshAsync(new RefreshTokenDTO { RefreshToken = auth.RefreshToken });
 
         // Reutilizar el token ya rotado debe fallar: detecta robo/reutilización.
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.RefreshAsync(new RefreshTokenDTO { RefreshToken = auth.RefreshToken }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));
@@ -207,7 +208,7 @@ public class AuthServiceTests
     [Test]
     public void RefreshAsync_UnknownToken_Throws401()
     {
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.RefreshAsync(new RefreshTokenDTO { RefreshToken = "not-a-real-token" }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));
@@ -219,7 +220,7 @@ public class AuthServiceTests
         var auth = await RegisterAndLoginAsync();
         _refreshTokens.Tokens.Single().ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
 
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.RefreshAsync(new RefreshTokenDTO { RefreshToken = auth.RefreshToken }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));
@@ -231,7 +232,7 @@ public class AuthServiceTests
         var auth = await RegisterAndLoginAsync();
         await _userService.DeleteUserAsync(auth.UserId);
 
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.RefreshAsync(new RefreshTokenDTO { RefreshToken = auth.RefreshToken }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401),
@@ -245,7 +246,7 @@ public class AuthServiceTests
 
         await _service.RevokeAsync(new RefreshTokenDTO { RefreshToken = auth.RefreshToken });
 
-        var ex = Assert.ThrowsAsync<Api.Common.DomainException>(
+        var ex = Assert.ThrowsAsync<WMS.Domain.Common.DomainException>(
             () => _service.RefreshAsync(new RefreshTokenDTO { RefreshToken = auth.RefreshToken }));
 
         Assert.That(ex!.StatusCode, Is.EqualTo(401));

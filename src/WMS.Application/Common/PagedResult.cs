@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Common;
+namespace WMS.Application.Common;
 
 public class PagedResult<T>
 {

@@ -1,4 +1,5 @@
-using Api.Users;
+using WMS.Application.Users;
+using WMS.Domain.Entities;
 
 namespace Api.Test.Fakes;
 

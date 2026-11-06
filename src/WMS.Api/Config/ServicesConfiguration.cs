@@ -2,9 +2,11 @@ using Api.Auth;
 using Api.Inventory;
 using Api.Products;
 using Api.Security;
-using Api.Users;
 using Api.Warehouses;
 using Microsoft.AspNetCore.Identity;
+using WMS.Application.Auth;
+using WMS.Application.Users;
+using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence.Repositories;
 
 namespace WMS.Api.Config;

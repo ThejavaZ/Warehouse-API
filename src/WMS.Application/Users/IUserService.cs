@@ -1,6 +1,6 @@
-using Api.Common;
+using WMS.Application.Common;
 
-namespace Api.Users;
+namespace WMS.Application.Users;
 
 public interface IUserService
 {
