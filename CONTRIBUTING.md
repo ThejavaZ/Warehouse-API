@@ -1,147 +1,185 @@
-# Contributing to Callio Mobile
+# Contribuir a Warehouse API
 
-Thank you for your interest in contributing to Callio Mobile!
+Gracias por tu interés en contribuir a Warehouse API.
 
-This document describes the basic guidelines for contributing to the project.
+Este documento describe las pautas básicas para contribuir al proyecto.
 
-## 1. Code of Conduct
+## 1. Código de conducta
 
-All contributors are expected to maintain a respectful, collaborative, and constructive environment.
+Se espera que toda persona contribuyente mantenga un entorno respetuoso,
+colaborativo y constructivo. Consulta el [Código de conducta](CODE_OF_CONDUCT.md).
 
-## 2. Before Contributing
+## 2. Antes de contribuir
 
-Before starting work:
+Antes de empezar:
 
-1. Check existing issues to avoid duplicated work.
-2. Discuss significant changes before implementing them.
-3. Keep contributions focused and easy to review.
-4. Follow the project's existing architecture and conventions.
+1. Revisa los issues abiertos (hay plantillas de bug y de feature) para no duplicar trabajo.
+2. Discute los cambios significativos antes de implementarlos.
+3. Mantén las contribuciones enfocadas y fáciles de revisar.
+4. Sigue la arquitectura y las convenciones existentes.
+5. **El contrato HTTP es intocable**: el frontend (`Warehouse-Client`) ya está
+   terminado. Si un cambio modifica rutas, códigos de estado o el shape de una
+   respuesta, se coordina en el mismo ciclo con el cliente.
 
-## 3. Development Environment
+## 3. Entorno de desarrollo
 
-Callio Mobile is built with:
+Requisitos:
 
-- Kotlin
-- Jetpack Compose
-- Material 3
-- Android SDK
-- Gradle with Kotlin DSL
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Docker (para PostgreSQL vía `docker compose`)
+- `dotnet-ef` solo si vas a trabajar con migraciones:
+  `dotnet tool install --global dotnet-ef`
 
-Use a compatible Android Studio installation and the JDK version required by the project.
+La forma más rápida de levantar el entorno:
 
-## 4. Branching Strategy
-
-Use descriptive branch names:
-
-| Branch prefix | Purpose |
-|---|---|
-| `feature/` | New functionality |
-| `fix/` | Bug fixes |
-| `refactor/` | Code improvements |
-| `docs/` | Documentation changes |
-| `chore/` | Maintenance and configuration |
-
-Examples:
-
-```text
-feature/contact-management
-fix/contact-import
-refactor/contacts-repository
-docs/update-readme
-chore/update-gradle
+```bash
+docker compose up -d          # PostgreSQL en localhost:5433 (credenciales en .env)
+dotnet run --project src/WMS.Api   # API en http://localhost:5259/swagger
 ```
 
-## 5. Commit Convention
+La cadena de conexión y el secreto JWT **no están en el repositorio**: en
+desarrollo se configuran con [User Secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets)
+y en producción con variables de entorno. El README (sección de configuración)
+tiene los comandos exactos. **Nunca** subas secretos a Git.
 
-Callio follows Conventional Commits.
+## 4. Comandos esenciales
 
-Format:
+| Comando | Para qué |
+|---|---|
+| `dotnet build WarehouseApi.sln` | Compilar toda la solución |
+| `dotnet test WarehouseApi.sln` | Ejecutar todos los tests |
+| `dotnet run --project src/WMS.Api` | Arrancar la API (puerto 5259) |
+| `dotnet ef migrations has-pending-model-changes --project src/WMS.Infrastructure --startup-project src/WMS.Api` | Verificar que el modelo EF coincide con las migraciones |
+| `dotnet ef database update --project src/WMS.Infrastructure --startup-project src/WMS.Api` | Aplicar migraciones pendientes |
+
+## 5. Estructura y arquitectura
+
+El proyecto sigue una **arquitectura hexagonal** (puertos y adaptadores):
+
+| Proyecto | Responsabilidad |
+|---|---|
+| `src/WMS.Api` | Composition root: host, controladores, configuración, middleware |
+| `src/WMS.Domain` | Entidades de dominio (sin dependencias) |
+| `src/WMS.Application` | Casos de uso y **puertos** (interfaces) |
+| `src/WMS.Infrastructure` | **Adaptadores**: persistencia EF, JWT, hashing BCrypt |
+| `src/Api` | Monolito original **en migración** — servicios y entidades que aún no han pasado a las capas `WMS.*` |
+| `src/Test` | Tests (NUnit) del código que aún vive en `src/Api` |
+| `src/WMS.*.Test` | Tests por módulo |
+
+Reglas que respeta cualquier contribución:
+
+- Las dependencias apuntan hacia dentro: `Api → Application → Domain` en sentido
+  inverso; `Infrastructure` implementa los puertos de `Application`.
+- **Entity Framework solo en `WMS.Infrastructure`** (el `AppDbContext`, sus
+  configuraciones y las migraciones viven en `Persistence/`).
+- Los servicios y casos de uso dependen de **interfaces** (`IUserRepository`),
+  nunca de clases concretas de adaptadores.
+- `src/Api` es un puente temporal de la migración: no le añandas capacidades
+  nuevas que puedan ir directamente a `WMS.*`.
+
+Sigue SOLID y KISS sin introducir complejidad prematura.
+
+## 6. Estrategia de ramas
+
+Usa nombres descriptivos:
+
+| Prefijo | Propósito |
+|---|---|
+| `feature/` | Nueva funcionalidad |
+| `fix/` | Corrección de bugs |
+| `refactor/` | Mejoras de estructura sin cambiar comportamiento |
+| `docs/` | Cambios de documentación |
+| `chore/` | Mantenimiento y configuración |
+| `test/` | Añadido o mejora de tests |
+
+Ejemplos:
+
+```text
+feature/refresh-token-rotation
+fix/auth-expired-token-message
+refactor/ef-repository
+docs/update-contributing
+chore/ci-cache-nuget
+```
+
+## 7. Convención de commits
+
+Sigue [Conventional Commits](https://www.conventionalcommits.org/) y escribe los
+mensajes **en inglés**:
 
 ```text
 <type>(<scope>): <description>
 ```
 
-Common types:
-
-| Type | Description |
+| Tipo | Descripción |
 |---|---|
-| `feat` | New functionality |
-| `fix` | Bug fixes |
-| `refactor` | Code restructuring |
-| `docs` | Documentation changes |
+| `feat` | Nueva funcionalidad |
+| `fix` | Corrección de bugs |
+| `refactor` | Reestructuración de código |
+| `docs` | Documentación |
 | `test` | Tests |
-| `chore` | Maintenance |
-| `style` | Formatting changes |
+| `chore` | Mantenimiento |
+| `ci` | Integración continua |
+| `style` | Formato |
 
-Examples:
+Scopes habituales: `api`, `auth`, `users`, `products`, `warehouses`,
+`inventory`, `infrastructure`, `application`, `domain`, `ci`, `github`.
+
+Ejemplos reales del repositorio:
 
 ```text
-feat(contacts): add contact creation
-fix(telephony): handle missing phone numbers
-refactor(database): simplify contact queries
-docs(readme): update project overview
-chore(android): configure application dependencies
+refactor(infrastructure): move ef persistence to wms.infrastructure
+test(infrastructure): add password hasher unit tests
+ci: add dotnet build and test workflow
 ```
 
-Commit messages should be clear, concise, and written in English.
+## 8. Tests (obligatorio)
 
-## 6. Architecture Guidelines
+- **Unit tests en NUnit** en todos los módulos. Hoy viven en `src/Test`
+  (`[TestFixture]` / `Assert.That` / `Method_Condition_Expectation`); los módulos
+  migrados los reciben en su proyecto `WMS.*.Test`.
+- **Feature tests en xUnit** (`WMS.Api.Test`) con `WebApplicationFactory` y
+  SQLite in-memory.
+- Toda funcionalidad nueva lleva sus tests; un cambio sin tests solo se acepta
+  si no es testeable de forma razonable y se justifica en el PR.
 
-Contributions should respect the project's architectural principles:
+### Gates antes de abrir un PR
 
-- Follow feature-first organization.
-- Keep presentation, domain, and data responsibilities separated.
-- Use ViewModels to manage UI state.
-- Prefer StateFlow for observable UI state.
-- Keep business logic outside Composable functions.
-- Use repositories to abstract data sources.
-- Avoid unnecessary abstractions and dependencies.
+1. `dotnet build WarehouseApi.sln` → **0 errores y 0 advertencias**
+2. `dotnet test WarehouseApi.sln` → **en verde**
+3. Si tocas EF: `dotnet ef migrations has-pending-model-changes ...` →
+   *"No changes have been made to the model since the last migration"*
+4. `git diff` sin secretos (`appsettings.json`, `.env`, user secrets)
 
-Follow SOLID and KISS principles without introducing complexity prematurely.
-
-## 7. Kotlin and Compose Guidelines
-
-- Prefer clear and descriptive names.
-- Follow Kotlin coding conventions.
-- Use immutable UI state whenever practical.
-- Keep Composable functions focused.
-- Extract reusable UI components when appropriate.
-- Handle loading, success, empty, and error states.
-- Avoid unnecessary recompositions and expensive UI operations.
-
-## 8. Testing
-
-Contributions should include appropriate tests whenever practical.
-
-Before submitting changes, verify that:
-
-- The application builds successfully.
-- Existing tests pass.
-- New functionality behaves as expected.
-- No unrelated functionality is broken.
+La CI (`.github/workflows/ci.yml`) ejecuta build y test en cada push y PR.
 
 ## 9. Pull Requests
 
-Pull Requests should:
+Los PRs deben:
 
-1. Explain the purpose of the change.
-2. Describe the implemented functionality.
-3. Reference related issues when applicable.
-4. Include screenshots for significant UI changes.
-5. Mention any relevant testing performed.
+1. Explicar el propósito del cambio.
+2. Describir lo implementado.
+3. Referenciar los issues relacionados (`Closes #123`).
+4. Marcar en la checklist cómo se ha verificado.
+5. Indicar si tocan el contrato HTTP (ver sección 2).
 
-Keep Pull Requests focused on a single feature or improvement whenever possible.
+Usa la plantilla de PR del repositorio. Mantén cada PR enfocado en una sola
+característica o mejora.
 
-## 10. Licensing
+## 10. Licencia
 
-By contributing to Callio Mobile, you agree that your contributions will be licensed under the **Apache License, Version 2.0**.
+Al contribuir a Warehouse API aceptas que tus contribuciones se licencien bajo
+la **Licencia MIT** (ver [LICENSE](LICENSE)).
 
-You retain copyright ownership of your contributions while granting the rights specified by the project's license.
+Conservas la titularidad de tus contribuciones y otorgas los derechos que
+establece la licencia del proyecto.
 
-See the [LICENSE](LICENSE) file for the complete license text.
+## 11. Preguntas y sugerencias
 
-## 11. Questions and Suggestions
+Para dudas, sugerencias o bugs, usa los [Issues](https://github.com/ThejavaZ/Warehouse-API/issues)
+con las plantillas disponibles.
 
-For questions, suggestions, or bug reports, use the project's GitHub Issues.
+Para reportar **vulnerabilidades de seguridad**, no abras un issue: consulta la
+[política de seguridad](SECURITY.md).
 
-Thank you for helping improve Callio Mobile!
+¡Gracias por ayudar a mejorar Warehouse API!
