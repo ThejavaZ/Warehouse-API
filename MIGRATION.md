@@ -1,0 +1,119 @@
+# Migración a arquitectura hexagonal
+
+> **Estado: en curso.** Documento vivo: se actualiza en cada tarea de la
+> migración. Última actualización: **2026-11-05**.
+
+## Por qué
+
+`Warehouse-API` nació como monolito en `src/Api`: controladores, servicios,
+repositorios y EF Core convivían en el mismo proyecto. La migración busca
+aislamiento real de responsabilidades y testabilidad sin tocar lo que ya
+funciona:
+
+- **Dominio y casos de uso sin dependencias de infraestructura** (EF, JWT,
+  BCrypt) detrás de interfaces.
+- **Adaptadores reemplazables** en `WMS.Infrastructure`.
+- Un **composition root único** (`WMS.Api`) que ensambla las capas.
+
+Ver [ADR-0001](docs/adr/0001-arquitectura-hexagonal.md) para la decisión
+completa y sus alternativas.
+
+## Reglas inviolables de la migración
+
+1. **El contrato HTTP no cambia.** El frontend (`Warehouse-Client`) está
+   terminado: rutas, códigos de estado y shape de respuestas son la fuente de
+   verdad. Si algo obligara a romperlo, se detiene la migración y se coordina
+   con el cliente en el mismo ciclo.
+2. **El esquema de BD está congelado.** Ningún cambio de modelo que exija una
+   migración nueva. Gate: `dotnet ef migrations has-pending-model-changes`
+   debe responder *"No changes have been made to the model since the last
+   migration"*.
+3. **Build y tests siempre en verde.** Cada tarea se cierra con la solución
+   compilando sin errores ni advertencias y toda la suite en verde.
+4. **Pasos pequeños y revisables.** Un commit por paso, Conventional Commits,
+   con los gates ejecutados antes de proponerlo.
+
+## Estado de las tareas
+
+| ID | Tarea | Estado | Commit |
+|---|---|---|---|
+| T1 | Composition root en `WMS.Api` (Program, Config, middleware, controladores) | ✅ | `58a2ffb` |
+| T2 | CI (`ci.yml`: build + test + artefactos) | ✅ | `f790db9` |
+| T3 | Plantillas de issues/PR y Dependabot | ✅ | `962f058` |
+| R1 | Partir `AppDbContext` en `IEntityTypeConfiguration<T>` | ✅ | `9d8c9bc` |
+| R2 | Unit tests NUnit del hasher (`WMS.Infrastructure.Test`) | ✅ | `be2f1c5` |
+| T4 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` | ✅ | `7c0fef4` |
+| T5 | `Directory.Build.props` + `.editorconfig` + formato normalizado | ✅ | `66397aa` |
+| T6 | `MIGRATION.md` + ADR-0001 + README (badges, estructura, recuentos) | ✅ | este commit |
+| — | **Traslado del clúster EF a `WMS.Infrastructure`** (con namespaces `WMS.*`) | ✅ | `51442c1` |
+| — | Adaptador `JwtTokenService` (código muerto, opción A) | ✅ | `75fd07f` |
+| T7–T8 | Mover los feature tests a xUnit en `WMS.Api.Test` | ⬜ | |
+| T9–T15 | Migrar los módulos (Users, Products, Warehouses, Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
+
+## Qué queda por mover (T9–T15) y por qué así
+
+Hoy existe un **puente transitorio**: `WMS.Infrastructure` referencia a
+`src/Api` porque las entidades (`Api.Users.User`, `Api.Products.Product`, …) y
+los servicios siguen allí. Se resuelve módulo a módulo:
+
+- **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
+  y los `Designer` de las migraciones referencian cada entidad por **nombre
+  completo en strings** (`modelBuilder.Entity("Api.Users.User")`). Renombrarlas
+  exige actualizar esos ficheros generados y pasar el gate del esquema; por eso
+  no se han movido todavía. (`WMS.Domain/Entities` ya contiene scaffolds
+  colisionantes — `User.cs`, `Product.cs`, `Warehouse.cs` — que se sustituyen
+  al migrar cada módulo. `Movement.cs`, `DependencyInjection.cs` y
+  `Persistence/AppDbContext.cs` estuvieron vacíos como marcadores; los dos
+  primeros siguen esperando su módulo.)
+- **Casos de uso y servicios** → `WMS.Application`.
+- **Interfaces de repositorio** → junto a sus casos de uso (los puertos de
+  EF) y sus implementaciones quedan ya en `WMS.Infrastructure/Persistence/Repositories`.
+- Cuando el último módulo salga de `src/Api`, desaparece el puente
+  `WMS.Infrastructure → Api` y finalmente `src/Api`.
+
+## Gates de verificación (ejecutar en cada tarea)
+
+```bash
+# 1. Compilación sin errores ni advertencias
+dotnet build WarehouseApi.sln
+
+# 2. Toda la suite en verde (hoy:197 pruebas)
+dotnet test WarehouseApi.sln
+
+# 3. Esquema congelado
+dotnet ef migrations has-pending-model-changes \
+  --project src/WMS.Infrastructure --startup-project src/WMS.Api
+
+# 4. Formato conforme al .editorconfig
+dotnet format WarehouseApi.sln --verify-no-changes
+```
+
+Si la tarea toca `.csproj`, `Directory.Build.props` o el `Dockerfile`:
+
+```bash
+docker build -t warehouse-api .
+```
+
+## Decisiones ya tomadas
+
+| Decisión | Por qué |
+|---|---|
+| **EF completo en `WMS.Infrastructure`** (contexto, configuraciones, migraciones, repositorios) | Es el adapter de persistencia; además EF descubre las migraciones en el assembly del contexto, así que viajan juntas |
+| **Entidades fuera de `WMS.Domain` hasta T9–T15** | El snapshot las referencia por nombre completo en strings: moverlas sin actualizar los generados rompería el gate del esquema |
+| **Cópias de RFID: opción A** (`JwtTokenService` en `WMS.Infrastructure`) | Dejadas como código muerto que compila; se reescriben contra `AuthOptions` real al migrar Auth |
+| **`TreatWarningsAsErrors` en `false`** (documentado en `Directory.Build.props`) | No bloquear el build con avisos heredados durante la migración; se activa al cerrarla |
+| **No reutilizar del proyecto RFID**: `ValidationException`/middleware (Warehouse ya tiene `DomainException`), `Login.ExecuteAsync` (rompería los tests existentes), seeders `admin/123`, `UseSnakeCaseNamingConvention` (reventaría el esquema congelado), DI `AddInfrastructure` (clave `Database` vs `DefaultConnection`), `Domain/Ports` (aquí es `<módulo>/interfaces/`) | Cada pieza encaja con las convenciones y decisiones ya establecidas en este repo |
+
+## Cómo se verá al terminar (T15)
+
+```text
+src/
+├── WMS.Api            # composition root: host, controladores, config
+├── WMS.Domain         # entidades y reglas de dominio (sin dependencias)
+├── WMS.Application    # casos de uso + puertos (interfaces)
+├── WMS.Infrastructure # adaptadores: EF, JWT, BCrypt (sin referencias a src/Api)
+└── WMS.*.Test         # tests por módulo (NUnit) + WMS.Api.Test (feature, xUnit)
+```
+
+`src/Api` habrá desaparecido y `src/Test` se habrá vaciado hacia los proyectos
+de test de cada módulo.

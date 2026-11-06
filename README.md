@@ -1,6 +1,9 @@
 # Warehouse API
 
 [![CI](https://github.com/ThejavaZ/Warehouse-API/actions/workflows/ci.yml/badge.svg)](https://github.com/ThejavaZ/Warehouse-API/actions/workflows/ci.yml)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-yellow.svg)](LICENSE)
+[![Código de conducta](https://img.shields.io/badge/código%20de%20conducta-Contributor%20Covenant-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
 API REST para gestión de almacén construida con **ASP.NET Core 8**, **EF Core** y **PostgreSQL**.
 
@@ -338,49 +341,55 @@ DTOs validados con Data Annotations y validados automáticamente por `[ApiContro
 
 ## Estructura del proyecto
 
+Arquitectura hexagonal (ver [MIGRATION.md](MIGRATION.md) y [ADR-0001](docs/adr/0001-arquitectura-hexagonal.md)
+para el estado de la migración):
+
 ```
 Warehouse-API/
 ├── WarehouseApi.sln
+├── Directory.Build.props                # Nullable/ImplicitUsings compartidos
+├── .editorconfig                        # Estilo del código
+├── Dockerfile / docker-compose.yml      # Imagen y PostgreSQL
+├── MIGRATION.md                         # Estado de la migración hexagonal
+├── docs/adr/                            # Architecture Decision Records
 ├── src/
-│   ├── Api/
-│   │   ├── Program.cs                    # Pipeline y composición
-│   │   ├── Api.http                      # Ejemplos de peticiones para REST Client
-│   │   ├── config/                       # BD, Auth, CORS, RateLimit, Swagger, Identity, validación…
-│   │   ├── Common/                       # PagedQuery, PagedResult, DomainException
-│   │   ├── middleware/
-│   │   │   └── ErrorHandlingMiddleware.cs  # ProblemDetails global
-│   │   ├── security/
-│   │   │   └── BCryptPasswordHasher.cs    # IPasswordHasher<User> con BCrypt
-│   │   ├── auth/                         # Sprint 11: login/refresh JWT
-│   │   │   ├── AuthController.cs         # register, login, refresh, revoke, me
-│   │   │   ├── AuthService.cs            # Reglas de sesión y rotación de tokens
-│   │   │   ├── JwtTokenService.cs        # Firma de access tokens + refresh tokens
-│   │   │   ├── RefreshTokenRepository.cs # Persistencia y revocación
-│   │   │   ├── AuthOptions.cs            # Sección "Auth" de la configuración
-│   │   │   ├── interfaces/
-│   │   │   └── models/                   # LoginDTO, RefreshTokenDTO, AuthViewModel, RefreshToken
-│   │   ├── users/                        # Módulo Users (el de aprendizaje)
-│   │   ├── products/                     # Sprint 13
-│   │   ├── warehouses/                   # Sprint 14
-│   │   ├── inventory/                    # Sprint 14: existencias y movimientos
-│   │   └── data/
-│   │       ├── AppDbContext.cs
-│   │       ├── AppDbContextDesignTimeFactory.cs
-│   │       └── migrations/
-│   └── Test/
-│       ├── *Tests.cs                     # Unitarios: services, repos (SQLite), middleware, auth
-│       └── Integration/                  # WebApplicationFactory + SQLite
-│           ├── IntegrationTestBase.cs    # Registro/login/Bearer y limpieza de BD
-│           ├── WarehouseApiFactory.cs    # Host en memoria con Auth:Secret de prueba
-│           └── *ApiTests.cs              # Auth, User, Product, Warehouse, InventoryItem
+│   ├── WMS.Api/                         # Composition root (host)
+│   │   ├── Program.cs                   # Pipeline; aplica migraciones al arrancar
+│   │   ├── Controllers/                 # Auth, User, Product, Warehouse, Inventory
+│   │   ├── Config/                      # BD, Auth, CORS, RateLimit, Swagger, Identity…
+│   │   └── middleware/ErrorHandlingMiddleware.cs
+│   ├── WMS.Domain/                      # Entidades (sin dependencias)
+│   │   ├── Entities/                    # User, Product, Warehouse, Inventory…
+│   │   └── Common/Model.cs
+│   ├── WMS.Application/                 # Casos de uso y puertos
+│   │   └── Ports/                       # IPasswordHasher, ITokenService
+│   ├── WMS.Infrastructure/              # Adaptadores
+│   │   ├── Persistence/
+│   │   │   ├── AppDbContext.cs          # + AppDbContextDesignTimeFactory
+│   │   │   ├── Configurations/          # IEntityTypeConfiguration<T>
+│   │   │   ├── Migrations/
+│   │   │   └── Repositories/            # User, Product, Warehouse, Inventory, RefreshToken
+│   │   └── auth/                        # JwtTokenService y BcryptPasswordHasher
+│   ├── Api/                             # Monolito en migración (puente a T9–T15)
+│   │   ├── Common/                      # PagedQuery, PagedResult, DomainException
+│   │   ├── security/BCryptPasswordHasher.cs
+│   │   └── auth/ users/ products/ warehouses/ inventory/
+│   │       ├── *Service.cs              # Casos de uso (→ WMS.Application)
+│   │       ├── interfaces/              # IUserRepository, IUserService…
+│   │       └── models/                  # DTOs, ViewModels, Query y entidades (→ WMS.Domain)
+│   ├── Test/                            # NUnit: unitarios + integración HTTP
+│   │   ├── Fakes/
+│   │   └── Integration/                 # WebApplicationFactory + SQLite en memoria
+│   └── WMS.*.Test/                      # Tests por módulo (NUnit; WMS.Api.Test: feature, xUnit)
 ```
 
 ### Flujo de una petición
 
 ```
-Controller  →  Service  →  Repository  →  EF Core  →  PostgreSQL
-   HTTP      reglas de     IQueryable     SQL         datos
-             negocio       + mapeo
+Controller          Service           Repository            EF Core        PostgreSQL
+(WMS.Api)      →   (src/Api)     →   (WMS.Infrastructure)  →  SQL      →    datos
+   HTTP             reglas de         IQueryable
+                    negocio           + mapeo
 ```
 
 - **Controller**: solo traduce HTTP. Lanza/mapea estados, delega al servicio.
@@ -405,11 +414,13 @@ Controller  →  Service  →  Repository  →  EF Core  →  PostgreSQL
 dotnet test
 ```
 
-**188 pruebas** con NUnit, sin advertencias de compilación. Cubren:
+**197 pruebas** en verde, sin advertencias de compilación (189 NUnit en `src/Test`,
+5 NUnit en `WMS.Infrastructure.Test` y 3 marcadores xUnit que se sustituirán con
+los tests de cada módulo según avance la migración). Cubren:
 
 - **Unitarias — servicios**: `UserService`, `ProductService`, `WarehouseService`, `InventoryService`, `AuthService` (login, registro, rotación y revocación de refresh tokens) y `JwtTokenService` (firma, vida del token, hash de refresh tokens).
 - **Unitarias — repositorios contra SQLite en memoria**: paginación y filtros de Users/Products, índice único filtrado por `SoftDelete`, y los `UPDATE` condicionales de inventario (`WHERE Quantity >= @qty`) junto con el reintento en carrera por el índice `(WarehouseId, ProductId)`.
-- **Unitarias — infraestructura**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos), validaciones de Data Annotations y `BCryptPasswordHasher`.
+- **Unitarias — infraestructura**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos), validaciones de Data Annotations, `BCryptPasswordHasher` (el de Identity en `src/Api`) y `BcryptPasswordHasher` (el adaptador `IPasswordHasher` de `WMS.Infrastructure`: formato `$2`, sin texto plano, sal distinto por hash y verificación correcta/incorrecta).
 - **Integración HTTP** con `WebApplicationFactory` + SQLite en memoria: `AuthApiTests`, `UserApiTests`, `ProductApiTests`, `WarehouseApiTests` e `InventoryApiTests`. Cubren el flujo completo de sesión (register → login → llamada autenticada → refresh con rotación → revoke), `401` sin token y con token manipulado, `400/404/409` de cada módulo y los movimientos de inventario.
 
 La base común (`IntegrationTestBase`) arranca la API, limpia la BD entre pruebas y monta el Bearer; `WarehouseApiFactory` inyecta un `Auth:Secret` en memoria y sube los límites de rate limiting para que la suite no se corte sola.
@@ -431,7 +442,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 
 > **Cómo leerlo**: `[x]` = hecho y verificado, `[ ]` = pendiente. Los comentarios explican el estado real y las decisiones tomadas, para que este documento sea útil al retomar el proyecto dentro de un mes.
 >
-> **Estado global hoy**: los cinco módulos están implementados y documentados — **Auth** (JWT con refresh token rotatorio), **Users**, **Products**, **Warehouses** e **Inventory** (restock/consume con concurrencia) — más CORS por entorno, rate limiting y **188 pruebas en verde** con compilación sin advertencias. Siguen abiertos solo los ítems que dependen de métricas o requisitos reales (Sprint 15 y el `SortBy`/`fields` del Sprint 8).
+> **Estado global hoy**: los cinco módulos están implementados y documentados — **Auth** (JWT con refresh token rotatorio), **Users**, **Products**, **Warehouses** e **Inventory** (restock/consume con concurrencia) — más CORS por entorno, rate limiting y **197 pruebas en verde** con compilación sin advertencias. La arquitectura hexagonal está **en migración**: composition root y persistencia ya están en `WMS.*`, el detalle por tarea vive en [MIGRATION.md](MIGRATION.md). Siguen abiertos solo los ítems que dependen de métricas o requisitos reales (Sprint 15 y el `SortBy`/`fields` del Sprint 8).
 
 ### Fase 1 — Fundamentos y estructura
 
@@ -463,7 +474,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 #### Sprint 2. Modelos, DbContext y migraciones
 *Objetivo: el esquema de la BD refleje los modelos y cambie de forma controlada.*
 
-- [x] Crear `AppDbContext` — `src/Api/data/AppDbContext.cs`.
+- [x] Crear `AppDbContext` — `src/Api/data/AppDbContext.cs` (hoy en `src/WMS.Infrastructure/Persistence/AppDbContext.cs`).
 - [x] Configurar conexión con PostgreSQL — `UseNpgsql` en `DatabaseConfiguration`.
 - [x] Registrar entidades — `DbSet<User>` declarado como `public new` para ocultar el `Users` heredado de `IdentityDbContext`.
 - [x] Configurar Identity — `IdentityConfiguration` registra `IdentityUser`/`IdentityRole` (base para futura autenticación).
@@ -662,7 +673,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 
 ### Siguiente paso recomendado
 
-Los sprints 11, 13, 14 y el bloque implementable del 15 están **cerrados y verificados** (`dotnet test` → 188 pruebas, build sin advertencias). Lo que queda, en orden de utilidad:
+Los sprints 11, 13, 14 y el bloque implementable del 15 están **cerrados y verificados** (`dotnet test` → 197 pruebas, build sin advertencias). Lo que queda, en orden de utilidad:
 
 1. **Desplegar y observar** — levantar en un entorno real con `ASPNETCORE_ENVIRONMENT=Production`, `Auth__Secret` y `Cors__AllowedOrigins` definidos; elegir entonces el destino de los logs (ítem abierto del Sprint 15).
 2. **Métricas de rendimiento** — medir antes de optimizar (ítem abierto del Sprint 15). Sin volumen real no hay nada que justifique tocar el código.

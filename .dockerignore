@@ -11,6 +11,8 @@ src/WMS.*.Test
 
 # Archivos que la app no necesita dentro del contenedor
 README.md
+MIGRATION.md
+docs
 LICENSE
 global.json
 WarehouseApi.sln
