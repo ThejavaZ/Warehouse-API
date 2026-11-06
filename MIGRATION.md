@@ -47,7 +47,8 @@ completa y sus alternativas.
 | T6 | `MIGRATION.md` + ADR-0001 + README (badges, estructura, recuentos) | ✅ | este commit |
 | — | **Traslado del clúster EF a `WMS.Infrastructure`** (con namespaces `WMS.*`) | ✅ | `51442c1` |
 | — | Adaptador `JwtTokenService` (código muerto, opción A) | ✅ | `75fd07f` |
-| T7–T8 | Mover los feature tests a xUnit en `WMS.Api.Test` | ⬜ | |
+| T7 | Feature tests a xUnit en `WMS.Api.Test` (base, factory y 5 suites) | ✅ | `3a0f616` |
+| T8 | Limpieza tras el traslado de tests: docs, paquetes y recuentos | ✅ | este commit |
 | T9–T15 | Migrar los módulos (Users, Products, Warehouses, Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
 
 ## Qué queda por mover (T9–T15) y por qué así
@@ -77,7 +78,7 @@ los servicios siguen allí. Se resuelve módulo a módulo:
 # 1. Compilación sin errores ni advertencias
 dotnet build WarehouseApi.sln
 
-# 2. Toda la suite en verde (hoy:197 pruebas)
+# 2. Toda la suite en verde (hoy: 196 pruebas)
 dotnet test WarehouseApi.sln
 
 # 3. Esquema congelado

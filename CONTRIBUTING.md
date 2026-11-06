@@ -64,7 +64,7 @@ El proyecto sigue una **arquitectura hexagonal** (puertos y adaptadores):
 | `src/WMS.Infrastructure` | **Adaptadores**: persistencia EF, JWT, hashing BCrypt |
 | `src/Api` | Monolito original **en migración** — servicios y entidades que aún no han pasado a las capas `WMS.*` |
 | `src/Test` | Tests (NUnit) del código que aún vive en `src/Api` |
-| `src/WMS.*.Test` | Tests por módulo |
+| `src/WMS.*.Test` | Tests por módulo (NUnit); **`WMS.Api.Test`**: feature tests HTTP (xUnit) |
 
 Reglas que respeta cualquier contribución:
 
