@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Casos de uso y puertos (Users, Common…) a los que aún llama src/Api. -->
+    <!-- Casos de uso y puertos (Users, Products, Common…) a los que aún llama src/Api. -->
     <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
     <!-- Entidades (User, RefreshToken) y DomainException. -->
     <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />

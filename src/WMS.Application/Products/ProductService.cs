@@ -1,6 +1,7 @@
 using WMS.Application.Common;
+using WMS.Domain.Entities;
 
-namespace Api.Products;
+namespace WMS.Application.Products;
 
 public class ProductService : IProductService
 {

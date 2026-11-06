@@ -1,6 +1,6 @@
 using WMS.Application.Common;
 
-namespace Api.Products;
+namespace WMS.Application.Products;
 
 public interface IProductService
 {

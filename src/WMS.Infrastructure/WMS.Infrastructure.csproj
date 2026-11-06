@@ -38,8 +38,8 @@
     <!-- Adaptador de salida: implementa los puertos de WMS.Application. -->
     <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
     <!--
-      Puente transitorio de la migración: las entidades (Api.Products.Product, …) y los
-      servicios siguen en src/Api hasta T10-T15. Desaparece cuando el último
+      Puente transitorio de la migración: las entidades (Api.Warehouses.Warehouse, …) y los
+      servicios siguen en src/Api hasta T11-T15. Desaparece cuando el último
       módulo pase a WMS.Domain / WMS.Application.
     -->
     <ProjectReference Include="..\Api\Api.csproj" />

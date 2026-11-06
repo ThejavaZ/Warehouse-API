@@ -61,7 +61,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Api.Products.Product", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.Product", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -449,7 +449,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Api.Inventory.InventoryItem", b =>
                 {
-                    b.HasOne("Api.Products.Product", "Product")
+                    b.HasOne("WMS.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)

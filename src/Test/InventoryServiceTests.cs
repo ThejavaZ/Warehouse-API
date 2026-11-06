@@ -1,8 +1,8 @@
 using Api.Inventory;
-using Api.Products;
 using Api.Test.Fakes;
 using Api.Warehouses;
 using WMS.Domain.Common;
+using WMS.Domain.Entities;
 
 namespace Api.Test;
 

@@ -1,12 +1,11 @@
 using Api.Inventory;
-using Api.Products;
 using Api.Warehouses;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-// Alias frente a los scaffolds colisionantes de WMS.Domain (Product.cs, Warehouse.cs…):
-// las entidades migradas se referencian por su nombre completo hasta que cada módulo
-// sustituya su scaffold.
+// Alias en lugar de un using en bruto: arrastraría los scaffolds de WMS.Domain
+// aún sin migrar (Warehouse.cs…) y colisionaría con los tipos de Api.*.
+using Product = WMS.Domain.Entities.Product;
 using RefreshToken = WMS.Domain.Entities.RefreshToken;
 using User = WMS.Domain.Entities.User;
 

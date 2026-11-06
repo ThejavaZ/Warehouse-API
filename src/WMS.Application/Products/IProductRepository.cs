@@ -1,4 +1,6 @@
-namespace Api.Products;
+using WMS.Domain.Entities;
+
+namespace WMS.Application.Products;
 
 public interface IProductRepository
 {

@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Products;
+namespace WMS.Application.Products;
 
-public class ProductCreateDTO
+public class ProductUpdateDTO
 {
     [Required(ErrorMessage = "El SKU es obligatorio.")]
     [StringLength(50, MinimumLength = 2, ErrorMessage = "El SKU debe tener entre 2 y 50 caracteres.")]

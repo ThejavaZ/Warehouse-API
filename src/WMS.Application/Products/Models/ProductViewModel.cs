@@ -1,4 +1,4 @@
-namespace Api.Products;
+namespace WMS.Application.Products;
 
 public class ProductViewModel
 {
