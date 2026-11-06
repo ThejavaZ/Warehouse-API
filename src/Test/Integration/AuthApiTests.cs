@@ -98,7 +98,7 @@ public class AuthApiTests : IntegrationTestBase
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<Api.Data.AppDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<WMS.Infrastructure.Persistence.AppDbContext>();
             db.Users.Single().SoftDelete = DateTime.UtcNow;
             await db.SaveChangesAsync();
         }

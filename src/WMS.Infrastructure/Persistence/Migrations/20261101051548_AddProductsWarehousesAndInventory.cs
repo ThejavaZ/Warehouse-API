@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Api.data.migrations
+namespace WMS.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddProductsWarehousesAndInventory : Migration

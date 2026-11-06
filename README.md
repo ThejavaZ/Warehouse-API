@@ -81,7 +81,7 @@ Si falta `Auth:Secret`, la API **no arranca**: lanza un error claro indicando c�
 
 ```bash
 dotnet tool install --global dotnet-ef
-dotnet ef database update --project src/Api
+dotnet ef database update --project src/WMS.Infrastructure --startup-project src/WMS.Api
 ```
 
 #### 4. Ejecutar
@@ -470,7 +470,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 - [x] Crear y ejecutar migraciones — tras un squash, una única migración `20261017175658_InitialMigration`.
 - [x] Revisar tipos, claves y restricciones — `Id` (PK), `UUID` (único), `Email` (único filtrado), longitudes de `Name`/`Email`/`Password`.
 - [x] Definir convenciones de nombres — tabla `users` en minúsculas con `[Table("users")]`; columnas en PascalCase (nativo de PostgreSQL/Npgsql).
-- [x] Verificar que las migraciones reflejan los modelos — `dotnet ef migrations has-pending-model-changes` sin cambios.
+- [x] Verificar que las migraciones reflejan los modelos — `dotnet ef migrations has-pending-model-changes --project src/WMS.Infrastructure --startup-project src/WMS.Api` sin cambios.
 - [x] Resolver el conflicto de `AppDbContext.Users` — propiedad `Users` propia con `new` (oculta la de Identity sin romperla).
 
 ### Fase 2 — Usuarios y operaciones CRUD

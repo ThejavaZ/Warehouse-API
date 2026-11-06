@@ -1,7 +1,7 @@
-using Api.Data;
 using Microsoft.EntityFrameworkCore;
 using WMS.Api.Config;
 using WMS.Api.Middleware;
+using WMS.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 

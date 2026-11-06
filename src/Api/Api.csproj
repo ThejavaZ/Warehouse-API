@@ -4,23 +4,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!--
-      Mismo id que WMS.Api a propósito: los user secrets son de la aplicación,
-      no del proyecto que los lee. Aquí hace falta para que AppDbContextDesignTimeFactory
-      encuentre ConnectionStrings:DefaultConnection al crear migraciones con `dotnet ef`.
-    -->
-    <UserSecretsId>Warehouse-API-8c3f1b7a</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
+    <!--
+      IPasswordHasher<User> vive en Microsoft.Extensions.Identity.Core, no en
+      EntityFrameworkCore: AuthService, UserService y BCryptPasswordHasher
+      solo necesitan la abstracción de Identity.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

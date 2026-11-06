@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace Api.Data;
+namespace WMS.Infrastructure.Persistence;
 
 /// <summary>
 /// Permite ejecutar las migraciones de EF Core sin compilar ni arrancar la API completa.

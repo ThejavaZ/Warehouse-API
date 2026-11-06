@@ -1,8 +1,9 @@
 using Api.Common;
-using Api.Data;
+using Api.Users;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
 
-namespace Api.Users;
+namespace WMS.Infrastructure.Persistence.Repositories;
 
 public class UserRepository : IUserRepository
 {

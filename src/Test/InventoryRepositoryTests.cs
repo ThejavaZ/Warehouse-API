@@ -1,9 +1,10 @@
-using Api.Data;
 using Api.Inventory;
 using Api.Products;
 using Api.Warehouses;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
+using WMS.Infrastructure.Persistence.Repositories;
 
 namespace Api.Test;
 

@@ -1,7 +1,8 @@
-using Api.Data;
+using Api.Auth;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
 
-namespace Api.Auth;
+namespace WMS.Infrastructure.Persistence.Repositories;
 
 public class RefreshTokenRepository : IRefreshTokenRepository
 {

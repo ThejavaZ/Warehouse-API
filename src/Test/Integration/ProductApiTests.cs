@@ -104,7 +104,7 @@ public class ProductApiTests : IntegrationTestBase
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<Api.Data.AppDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<WMS.Infrastructure.Persistence.AppDbContext>();
             db.Products.First(p => p.SKU == "DEST-01").IsActive = false;
             await db.SaveChangesAsync();
         }

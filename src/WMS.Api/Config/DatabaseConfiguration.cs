@@ -1,5 +1,5 @@
-using Api.Data;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.Api.Config;
 

@@ -1,8 +1,9 @@
 using Api.Common;
-using Api.Data;
+using Api.Inventory;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
 
-namespace Api.Inventory;
+namespace WMS.Infrastructure.Persistence.Repositories;
 
 public class InventoryRepository : IInventoryRepository
 {

@@ -40,7 +40,7 @@ public class UserApiTests : IntegrationTestBase
     private async Task SeedInactiveUserAsync(string email, string name)
     {
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<Api.Data.AppDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<WMS.Infrastructure.Persistence.AppDbContext>();
 
         db.Users.Add(new User
         {

@@ -1,8 +1,9 @@
 using Api.Common;
-using Api.Data;
+using Api.Warehouses;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
 
-namespace Api.Warehouses;
+namespace WMS.Infrastructure.Persistence.Repositories;
 
 public class WarehouseRepository : IWarehouseRepository
 {

@@ -5,6 +5,7 @@ using Api.Security;
 using Api.Users;
 using Api.Warehouses;
 using Microsoft.AspNetCore.Identity;
+using WMS.Infrastructure.Persistence.Repositories;
 
 namespace WMS.Api.Config;
 

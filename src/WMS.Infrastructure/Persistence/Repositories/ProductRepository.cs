@@ -1,8 +1,9 @@
 using Api.Common;
-using Api.Data;
+using Api.Products;
 using Microsoft.EntityFrameworkCore;
+using WMS.Infrastructure.Persistence;
 
-namespace Api.Products;
+namespace WMS.Infrastructure.Persistence.Repositories;
 
 public class ProductRepository : IProductRepository
 {

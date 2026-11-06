@@ -1,5 +1,5 @@
-using Api.Data;
 using Microsoft.AspNetCore.Identity;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.Api.Config;
 
