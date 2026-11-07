@@ -1,4 +1,4 @@
-namespace Api.Inventory;
+namespace WMS.Application.Inventory;
 
 public class InventoryItemViewModel
 {

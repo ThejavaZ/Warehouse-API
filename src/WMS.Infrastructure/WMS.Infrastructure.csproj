@@ -38,9 +38,9 @@
     <!-- Adaptador de salida: implementa los puertos de WMS.Application. -->
     <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
     <!--
-      Puente transitorio de la migración: las entidades (Api.Inventory.InventoryItem, …) y los
-      servicios siguen en src/Api hasta T12-T15. Desaparece cuando el último
-      módulo pase a WMS.Domain / WMS.Application.
+      Puente transitorio ya sin ningún uso de código en WMS.Infrastructure
+      (T12-T15): la referencia se retira en T14, cuando se verifique que nada
+      en el adaptador referencia src/Api.
     -->
     <ProjectReference Include="..\Api\Api.csproj" />
   </ItemGroup>

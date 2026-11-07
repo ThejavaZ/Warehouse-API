@@ -22,7 +22,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Api.Inventory.InventoryItem", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -448,7 +448,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                     b.ToTable("warehouses");
                 });
 
-            modelBuilder.Entity("Api.Inventory.InventoryItem", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Product", "Product")
                         .WithMany()

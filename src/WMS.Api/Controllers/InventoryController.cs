@@ -1,7 +1,7 @@
-using Api.Inventory;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WMS.Application.Common;
+using WMS.Application.Inventory;
 
 namespace WMS.Api.Controllers;
 

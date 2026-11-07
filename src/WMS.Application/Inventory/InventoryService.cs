@@ -4,7 +4,7 @@ using WMS.Application.Warehouses;
 using WMS.Domain.Common;
 using WMS.Domain.Entities;
 
-namespace Api.Inventory;
+namespace WMS.Application.Inventory;
 
 public class InventoryService : IInventoryService
 {

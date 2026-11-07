@@ -1,8 +1,8 @@
 using Api.Auth;
-using Api.Inventory;
 using Api.Security;
 using Microsoft.AspNetCore.Identity;
 using WMS.Application.Auth;
+using WMS.Application.Inventory;
 using WMS.Application.Products;
 using WMS.Application.Users;
 using WMS.Application.Warehouses;

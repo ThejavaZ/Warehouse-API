@@ -1,6 +1,7 @@
-using Api.Inventory;
 using Microsoft.EntityFrameworkCore;
 using WMS.Application.Common;
+using WMS.Application.Inventory;
+using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.Infrastructure.Persistence.Repositories;

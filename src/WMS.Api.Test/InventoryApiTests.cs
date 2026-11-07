@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Api.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using WMS.Application.Common;
+using WMS.Application.Inventory;
+using WMS.Domain.Entities;
 
 namespace WMS.Api.Test;
 

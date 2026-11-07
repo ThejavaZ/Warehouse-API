@@ -1,9 +1,9 @@
-using Api.Inventory;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 // Alias en lugar de un using en bruto: arrastraría los scaffolds de WMS.Domain
 // aún sin migrar (Inventory.cs, Location.cs…).
+using InventoryItem = WMS.Domain.Entities.InventoryItem;
 using Product = WMS.Domain.Entities.Product;
 using RefreshToken = WMS.Domain.Entities.RefreshToken;
 using User = WMS.Domain.Entities.User;

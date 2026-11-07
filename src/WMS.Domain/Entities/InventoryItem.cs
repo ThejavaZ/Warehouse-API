@@ -1,8 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using WMS.Domain.Entities;
 
-namespace Api.Inventory;
+namespace WMS.Domain.Entities;
 
 /// <summary>
 /// Tabla puente explícita almacén–producto (decisión del Sprint 14): permite llevar

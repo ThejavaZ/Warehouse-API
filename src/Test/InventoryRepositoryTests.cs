@@ -1,6 +1,6 @@
-using Api.Inventory;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using WMS.Application.Inventory;
 using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Persistence.Repositories;

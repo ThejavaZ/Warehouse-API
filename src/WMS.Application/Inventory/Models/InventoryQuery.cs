@@ -1,6 +1,6 @@
 using WMS.Application.Common;
 
-namespace Api.Inventory;
+namespace WMS.Application.Inventory;
 
 public class InventoryQuery : PagedQuery
 {

@@ -1,4 +1,6 @@
-namespace Api.Inventory;
+using WMS.Domain.Entities;
+
+namespace WMS.Application.Inventory;
 
 public interface IInventoryRepository
 {

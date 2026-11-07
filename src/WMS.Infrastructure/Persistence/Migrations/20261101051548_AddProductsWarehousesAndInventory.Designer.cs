@@ -64,7 +64,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                     b.ToTable("refresh_tokens");
                 });
 
-            modelBuilder.Entity("Api.Inventory.InventoryItem", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -454,7 +454,7 @@ namespace WMS.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Api.Inventory.InventoryItem", b =>
+            modelBuilder.Entity("WMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Product", "Product")
                         .WithMany()

@@ -1,4 +1,5 @@
-using Api.Inventory;
+using WMS.Application.Inventory;
+using WMS.Domain.Entities;
 
 namespace Api.Test.Fakes;
 

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Inventory;
+namespace WMS.Application.Inventory;
 
 /// <summary>Movimiento de entrada (restock) o salida (consume) de inventario.</summary>
 public class InventoryMovementDTO

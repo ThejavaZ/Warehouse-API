@@ -1,7 +1,7 @@
 # Migración a arquitectura hexagonal
 
 > **Estado: en curso.** Documento vivo: se actualiza en cada tarea de la
-> migración. Última actualización: **2026-11-05**.
+> migración. Última actualización: **2026-11-06**.
 
 ## Por qué
 
@@ -56,29 +56,29 @@ completa y sus alternativas.
 | T9 | Módulo Users completo a `WMS.Application` (servicio, interfaces y DTOs), entidad `User`/`RefreshToken` y `Api.Common` repartidos en `WMS.Domain`/`WMS.Application`, puerto `IRefreshTokenRepository` adelantado y migración `AddDescriptionToUsers` | ✅ | este commit |
 | T10 | Módulo Products completo a `WMS.Application`; `Product` = scaffold `: Model` (−location, +`[Table("products")]`) que sustituye a la entity de `Api`, strings EF reescritos | ✅ | este commit |
 | T11 | Módulo Warehouses completo a `WMS.Application`; `Warehouse` = scaffold `: Model` (namespace corregido) con migración `AddDescriptionToWarehouses` | ✅ | este commit |
-| T12–T15 | Migrar los módulos (Inventory, Auth) a `WMS.Application` / `WMS.Domain` / `WMS.Infrastructure` | ⬜ | |
+| T12 | Módulo Inventory a `WMS.Application`; `InventoryItem` (tabla puente, sin `Model`) → `WMS.Domain.Entities`, cero migración, y usings muertos `Api.Auth` fuera de Infrastructure | ✅ | este commit |
+| T13–T15 | Auth a `WMS.Application`, teardown del puente `Infrastructure → Api` y de `src/Api`/`src/Test` | ⬜ | |
 
-## Qué queda por mover (T12–T15) y por qué así
+## Qué queda por mover (T13–T15) y por qué así
 
-Hoy existe un **puente transitorio**: `WMS.Infrastructure` referencia a
-`src/Api` porque las entidades (`Api.Inventory.InventoryItem`, …) y
-los servicios siguen allí. Se resuelve módulo a módulo:
+Desde T12, `WMS.Infrastructure` **no usa ningún tipo de `Api.*` en código**:
+solo queda la referencia de proyecto (el "puente"), que retira T14. El cierre:
 
 - **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
   y los `Designer` de las migraciones referencian cada entidad por **nombre
-  completo en strings** (`modelBuilder.Entity("Api.Inventory.InventoryItem")`).
+  completo en strings** (`modelBuilder.Entity("WMS.Domain.Entities.InventoryItem")`).
   Renombrarlas exige actualizar esos ficheros generados y pasar el gate del
-  esquema; T9–T11 ya lo hicieron para `User`, `RefreshToken`, `Product` y
-  `Warehouse`.
+  esquema; T9–T12 ya lo hicieron para `User`, `RefreshToken`, `Product`,
+  `Warehouse` e `InventoryItem`.
   (`WMS.Domain/Entities` aún contiene scaffolds sin migrar — `Inventory.cs`,
   `Location.cs`, `Category.cs`… — que aún no se referencian. `Movement.cs`,
   `DependencyInjection.cs` y `Persistence/AppDbContext.cs` estuvieron vacíos
   como marcadores; los dos primeros siguen esperando su módulo.)
-- **Casos de uso y servicios** → `WMS.Application`.
+- **Casos de uso y servicios** → `WMS.Application` (queda Auth, en T13).
 - **Interfaces de repositorio** → junto a sus casos de uso (los puertos de
   EF) y sus implementaciones quedan ya en `WMS.Infrastructure/Persistence/Repositories`.
-- Cuando el último módulo salga de `src/Api`, desaparece el puente
-  `WMS.Infrastructure → Api` y finalmente `src/Api`.
+- T14 retira la referencia `WMS.Infrastructure → Api`; T15 hace desaparecer
+  `src/Api` y reubica `src/Test`.
 
 ## Gates de verificación (ejecutar en cada tarea)
 

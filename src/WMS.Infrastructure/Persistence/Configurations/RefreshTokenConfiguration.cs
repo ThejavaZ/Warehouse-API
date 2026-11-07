@@ -1,4 +1,3 @@
-using Api.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using WMS.Domain.Entities;

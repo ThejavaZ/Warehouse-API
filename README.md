@@ -359,12 +359,13 @@ Warehouse-API/
 │   │   ├── Config/                      # BD, Auth, CORS, RateLimit, Swagger, Identity…
 │   │   └── middleware/ErrorHandlingMiddleware.cs
 │   ├── WMS.Domain/                      # Entidades (sin dependencias)
-│   │   ├── Entities/                    # User, RefreshToken, Product, Warehouse y scaffolds (Inventory, Category…)
+│   │   ├── Entities/                    # User, RefreshToken, Product, Warehouse, InventoryItem y scaffolds (Inventory, Category…)
 │   │   └── Common/                      # Model.cs (base común) y DomainException.cs
 │   ├── WMS.Application/                 # Casos de uso y puertos
 │   │   ├── Users/                       # UserService, IUserService, IUserRepository y Models/ (DTOs, VM, Query)
 │   │   ├── Products/                    # ProductService, IProductService, IProductRepository y Models/
 │   │   ├── Warehouses/                  # WarehouseService, IWarehouseService, IWarehouseRepository y Models/
+│   │   ├── Inventory/                   # InventoryService, IInventoryService, IInventoryRepository y Models/
 │   │   ├── Auth/                        # IRefreshTokenRepository
 │   │   ├── Common/                      # PagedQuery, PagedResult
 │   │   └── Ports/                       # IPasswordHasher, ITokenService
@@ -375,12 +376,11 @@ Warehouse-API/
 │   │   │   ├── Migrations/
 │   │   │   └── Repositories/            # User, Product, Warehouse, Inventory, RefreshToken
 │   │   └── auth/                        # JwtTokenService y BcryptPasswordHasher
-│   ├── Api/                             # Monolito en migración (puente a T12–T15)
+│   ├── Api/                             # Monolito en migración (puente a T13–T15)
 │   │   ├── security/BCryptPasswordHasher.cs
-│   │   └── auth/ inventory/
-│   │       ├── *Service.cs              # Casos de uso (→ WMS.Application)
-│   │       ├── interfaces/              # IAuthService, IInventoryRepository…
-│   │       └── models/                  # DTOs, ViewModels, Query y entidades (→ WMS.Domain)
+│   │   └── auth/                        # AuthService, JwtTokenService, AuthOptions (→ WMS.Application en T13)
+│   │       ├── interfaces/              # IAuthService, IJwtTokenService
+│   │       └── models/                  # AuthViewModel, LoginDTO, RefreshTokenDTO
 │   ├── Test/                            # NUnit: unit tests de servicios, repos y middleware
 │   │   └── Fakes/                       # Dobles de repositorio para los servicios
 │   ├── WMS.Api.Test/                    # Feature tests HTTP (xUnit): IntegrationTestBase, WarehouseApiFactory y 5 suites
