@@ -23,8 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- DTOs y casos de uso viven en src/Api (puente de la migración). -->
-    <ProjectReference Include="..\Api\Api.csproj" />
     <!-- DTOs y casos de uso (UserViewModel, UserCreateDTO…) viven en WMS.Application. -->
     <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
     <!-- Entidades (User, RefreshToken) que siembran las pruebas. -->

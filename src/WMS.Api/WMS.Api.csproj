@@ -28,12 +28,6 @@
     <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
     <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
     <ProjectReference Include="..\WMS.Infrastructure\WMS.Infrastructure.csproj" />
-    <!--
-      Referencia transitoria a la migración: Api todavía contiene los servicios,
-      repositorios y el AppDbContext de los módulos aún no movidos. Desaparece
-      cuando el último módulo pase a WMS.Application / WMS.Infrastructure.
-    -->
-    <ProjectReference Include="..\Api\Api.csproj" />
   </ItemGroup>
 
 </Project>

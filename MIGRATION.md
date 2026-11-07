@@ -58,14 +58,19 @@ completa y sus alternativas.
 | T11 | Módulo Warehouses completo a `WMS.Application`; `Warehouse` = scaffold `: Model` (namespace corregido) con migración `AddDescriptionToWarehouses` | ✅ | este commit |
 | T12 | Módulo Inventory a `WMS.Application`; `InventoryItem` (tabla puente, sin `Model`) → `WMS.Domain.Entities`, cero migración, y usings muertos `Api.Auth` fuera de Infrastructure | ✅ | `ffd530a` |
 | T13 | Auth + security a `WMS.Application`/`WMS.Infrastructure/Auth`; borrado el código muerto de `75fd07f` (adaptadores alternativos + sus puertos); `src/Api` queda sin código; cero migración | ✅ | este commit |
-| T14–T15 | Teardown del puente `Infrastructure → Api` y de `src/Api`/`src/Test` | ⬜ | |
+| T14 | Retiradas las 4 referencias a `Api.csproj` (el puente `Infrastructure → Api` y las inbound huérfanas de `WMS.Api`, `src/Test` y `WMS.Api.Test`); los paquetes de Configuration que el factory traía en silencio el puente → refs explícitas en `WMS.Infrastructure` | ✅ | este commit |
+| T15 | Borrar `src/Api` y reubicar `src/Test` | ⬜ | |
 
-## Qué queda por mover (T14–T15) y por qué así
+## Qué queda por mover (T15) y por qué así
 
-Desde T12, `WMS.Infrastructure` **no usa ningún tipo de `Api.*` en código**:
-solo queda la referencia de proyecto (el "puente"), que retira T14. Y desde
-T13 `src/Api` **ya no contiene ningún `.cs`** (solo el `Api.csproj` y los
-`appsettings`). El cierre:
+**El puente desapareció en T14**: ninguna referencia de proyecto apunta ya a
+`Api.csproj` y `WMS.Infrastructure` no usa ningún tipo de `Api.*`. (Detalle
+revelado por el teardown: el puente aportaba en silencio el framework
+compartido `Microsoft.AspNetCore.App` vía el paquete JwtBearer de
+`Api.csproj`; `AppDbContextDesignTimeFactory` necesitaba de ahí
+`ConfigurationBuilder`/`AddJsonFile`/`AddUserSecrets`/`AddEnvironmentVariables`,
+hoy declarados explícitos.) Y desde T13 `src/Api` **ya no contiene ningún
+`.cs`** (solo el `Api.csproj` y los `appsettings`). El cierre:
 
 - **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
   y los `Designer` de las migraciones referencian cada entidad por **nombre
@@ -81,8 +86,8 @@ T13 `src/Api` **ya no contiene ningún `.cs`** (solo el `Api.csproj` y los
   T10 Products, T11 Warehouses, T12 Inventory, T13 Auth).
 - **Interfaces de repositorio** → junto a sus casos de uso (los puertos de
   EF) y sus implementaciones quedan ya en `WMS.Infrastructure/Persistence/Repositories`.
-- T14 retira la referencia `WMS.Infrastructure → Api`; T15 hace desaparecer
-  `src/Api` y reubica `src/Test`.
+- T15 borra `src/Api` (con el `Api.csproj`, ya sin referencias entrantes) y
+  reubica `src/Test` en los proyectos `WMS.*.Test`.
 
 ## Gates de verificación (ejecutar en cada tarea)
 

@@ -21,7 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Api\Api.csproj" />
     <!-- DTOs, casos de uso y puertos (Users, Common) viven en WMS.Application. -->
     <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
     <!-- Entidades (User, RefreshToken) y DomainException viven en WMS.Domain. -->
