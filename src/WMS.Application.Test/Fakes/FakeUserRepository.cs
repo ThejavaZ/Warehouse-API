@@ -1,7 +1,7 @@
 using WMS.Application.Users;
 using WMS.Domain.Entities;
 
-namespace Api.Test.Fakes;
+namespace WMS.Application.Test.Fakes;
 
 /// <summary>
 /// Implementación en memoria de IUserRepository para pruebas unitarias del servicio.

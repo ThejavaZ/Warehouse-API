@@ -5,7 +5,7 @@ using WMS.Application.Auth;
 using WMS.Domain.Entities;
 using WMS.Infrastructure.Auth;
 
-namespace Api.Test;
+namespace WMS.Infrastructure.Test;
 
 [TestFixture]
 public class JwtTokenServiceTests

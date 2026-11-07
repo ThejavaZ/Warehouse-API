@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using WMS.Application.Common;
 using WMS.Application.Users;
 
-namespace Api.Test;
+namespace WMS.Application.Test;
 
 [TestFixture]
 public class ValidationTests

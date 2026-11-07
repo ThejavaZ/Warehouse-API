@@ -375,11 +375,9 @@ Warehouse-API/
 │   │       ├── Configurations/          # IEntityTypeConfiguration<T>
 │   │       ├── Migrations/
 │   │       └── Repositories/            # User, Product, Warehouse, Inventory, RefreshToken
-│   ├── Api/                             # Solo csproj + appsettings (desaparece en T15)
-│   ├── Test/                            # NUnit: unit tests de servicios, repos y middleware
-│   │   └── Fakes/                       # Dobles de repositorio para los servicios
-│   ├── WMS.Api.Test/                    # Feature tests HTTP (xUnit): IntegrationTestBase, WarehouseApiFactory y 5 suites
-│   └── WMS.*.Test/                      # Tests por módulo (NUnit)
+│   ├── WMS.Api.Test/                    # Feature tests HTTP (xUnit): IntegrationTestBase, WarehouseApiFactory, 5 suites y ErrorHandlingMiddlewareTests
+│   ├── WMS.Application.Test/            # Tests de servicios y validación (NUnit) + Fakes/
+│   └── WMS.Infrastructure.Test/         # Tests de repositorios (SQLite), JwtTokenService y BCryptPasswordHasher (NUnit)
 ```
 
 ### Flujo de una petición
@@ -413,14 +411,14 @@ Controller          Service              Repository            EF Core        Po
 dotnet test
 ```
 
-**196 pruebas** en verde, sin advertencias de compilación (137 NUnit en `src/Test`,
-52 feature tests xUnit en `WMS.Api.Test`, 5 NUnit en `WMS.Infrastructure.Test` y
-2 marcadores xUnit que se sustituirán con los tests de cada módulo según avance
-la migración). Cubren:
+**191 pruebas** en verde, sin advertencias de compilación (96 NUnit en `WMS.Application.Test`,
+36 NUnit en `WMS.Infrastructure.Test` y 59 xUnit en `WMS.Api.Test`: 5 suites
+HTTP + middleware). Cubren:
 
 - **Unitarias — servicios**: `UserService`, `ProductService`, `WarehouseService`, `InventoryService`, `AuthService` (login, registro, rotación y revocación de refresh tokens) y `JwtTokenService` (firma, vida del token, hash de refresh tokens).
 - **Unitarias — repositorios contra SQLite en memoria**: paginación y filtros de Users/Products, índice único filtrado por `SoftDelete`, y los `UPDATE` condicionales de inventario (`WHERE Quantity >= @qty`) junto con el reintento en carrera por el índice `(WarehouseId, ProductId)`.
-- **Unitarias — infraestructura**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos), validaciones de Data Annotations y `BCryptPasswordHasher` (el adaptador real de `WMS.Infrastructure/Auth`, API de Identity: formato `$2`, sin texto plano, sal distinto por hash y verificación correcta/incorrecta).
+- **Unitarias — middleware y validación**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos) y validaciones de Data Annotations de los DTOs.
+- **Unitarias — infraestructura**: `BCryptPasswordHasher` (el adaptador real de `WMS.Infrastructure/Auth`, API de Identity: formato `$2`, sin texto plano, sal distinto por hash y verificación correcta/incorrecta).
 - **Integración HTTP (xUnit, en `WMS.Api.Test`)** con `WebApplicationFactory` + SQLite en memoria: `AuthApiTests`, `UserApiTests`, `ProductApiTests`, `WarehouseApiTests` e `InventoryApiTests`. Cubren el flujo completo de sesión (register → login → llamada autenticada → refresh con rotación → revoke), `401` sin token y con token manipulado, `400/404/409` de cada módulo y los movimientos de inventario.
 
 La base común (`IntegrationTestBase`) arranca la API, limpia la BD entre pruebas y monta el Bearer; `WarehouseApiFactory` inyecta un `Auth:Secret` en memoria y sube los límites de rate limiting para que la suite no se corte sola.
@@ -442,14 +440,14 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 
 > **Cómo leerlo**: `[x]` = hecho y verificado, `[ ]` = pendiente. Los comentarios explican el estado real y las decisiones tomadas, para que este documento sea útil al retomar el proyecto dentro de un mes.
 >
-> **Estado global hoy**: los cinco módulos están implementados y documentados — **Auth** (JWT con refresh token rotatorio), **Users**, **Products**, **Warehouses** e **Inventory** (restock/consume con concurrencia) — más CORS por entorno, rate limiting y **196 pruebas en verde** con compilación sin advertencias. La arquitectura hexagonal está **en migración**: composition root y persistencia ya están en `WMS.*`, el detalle por tarea vive en [MIGRATION.md](MIGRATION.md). Siguen abiertos solo los ítems que dependen de métricas o requisitos reales (Sprint 15 y el `SortBy`/`fields` del Sprint 8).
+> **Estado global hoy**: los cinco módulos están implementados y documentados — **Auth** (JWT con refresh token rotatorio), **Users**, **Products**, **Warehouses** e **Inventory** (restock/consume con concurrencia) — más CORS por entorno, rate limiting y **191 pruebas en verde** con compilación sin advertencias. La arquitectura hexagonal está **completada (T1–T15)**: composition root, capas y tests viven en proyectos `WMS.*`, el detalle por tarea está en [MIGRATION.md](MIGRATION.md). Siguen abiertos solo los ítems que dependen de métricas o requisitos reales (Sprint 15 y el `SortBy`/`fields` del Sprint 8).
 
 ### Fase 1 — Fundamentos y estructura
 
 #### Sprint 0. Creación del proyecto y entorno
 *Objetivo: una API que arranque y un entorno reproducible.*
 
-- [x] Crear proyecto ASP.NET Core Web API — estructura en `src/Api` y `src/Test` (hoy: proyectos `WMS.*` y `src/Test` pendiente de reubicar en T15).
+- [x] Crear proyecto ASP.NET Core Web API — estructura en `src/Api` y `src/Test` (hoy: proyectos `WMS.*` en `src/`; `src/Api` y `src/Test` desaparecieron en T15).
 - [x] Fijar y mantener la versión de .NET — `global.json` con SDK `8.0.424`; el Dockerfile usa el mismo tag para no desincronizar.
 - [x] Configurar PostgreSQL — cadena de conexión en User Secrets (dev) y variables de entorno (Docker/prod).
 - [x] Instalar paquetes EF Core para PostgreSQL — `Npgsql.EntityFrameworkCore.PostgreSQL` 8.0.0.
@@ -673,7 +671,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 
 ### Siguiente paso recomendado
 
-Los sprints 11, 13, 14 y el bloque implementable del 15 están **cerrados y verificados** (`dotnet test` → 196 pruebas, build sin advertencias). Lo que queda, en orden de utilidad:
+Los sprints 11, 13, 14 y el bloque implementable del 15 están **cerrados y verificados** (`dotnet test` → 191 pruebas, build sin advertencias). Lo que queda, en orden de utilidad:
 
 1. **Desplegar y observar** — levantar en un entorno real con `ASPNETCORE_ENVIRONMENT=Production`, `Auth__Secret` y `Cors__AllowedOrigins` definidos; elegir entonces el destino de los logs (ítem abierto del Sprint 15).
 2. **Métricas de rendimiento** — medir antes de optimizar (ítem abierto del Sprint 15). Sin volumen real no hay nada que justifique tocar el código.

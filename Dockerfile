@@ -3,8 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0.424 AS build
 WORKDIR /src
 
 # Copiar solo los .csproj primero para cachear la restauración de paquetes.
-# Se copian todos: WMS.Api es el host y arrastra Api + las tres capas.
-COPY src/Api/Api.csproj src/Api/
+# Se copian todos los proyectos: WMS.Api es el host y arrastra las tres capas.
 COPY src/WMS.Api/WMS.Api.csproj src/WMS.Api/
 COPY src/WMS.Domain/WMS.Domain.csproj src/WMS.Domain/
 COPY src/WMS.Application/WMS.Application.csproj src/WMS.Application/

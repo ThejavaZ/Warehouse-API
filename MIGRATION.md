@@ -1,7 +1,7 @@
 # Migración a arquitectura hexagonal
 
-> **Estado: en curso.** Documento vivo: se actualiza en cada tarea de la
-> migración. Última actualización: **2026-11-06**.
+> **Estado: completada (T1–T15).** Documento vivo: se actualizó en cada tarea
+> de la migración. Última actualización: **2026-11-07**.
 
 ## Por qué
 
@@ -59,35 +59,35 @@ completa y sus alternativas.
 | T12 | Módulo Inventory a `WMS.Application`; `InventoryItem` (tabla puente, sin `Model`) → `WMS.Domain.Entities`, cero migración, y usings muertos `Api.Auth` fuera de Infrastructure | ✅ | `ffd530a` |
 | T13 | Auth + security a `WMS.Application`/`WMS.Infrastructure/Auth`; borrado el código muerto de `75fd07f` (adaptadores alternativos + sus puertos); `src/Api` queda sin código; cero migración | ✅ | este commit |
 | T14 | Retiradas las 4 referencias a `Api.csproj` (el puente `Infrastructure → Api` y las inbound huérfanas de `WMS.Api`, `src/Test` y `WMS.Api.Test`); los paquetes de Configuration que el factory traía en silencio el puente → refs explícitas en `WMS.Infrastructure` | ✅ | este commit |
-| T15 | Borrar `src/Api` y reubicar `src/Test` | ⬜ | |
+| T15 | **Cierre**: `src/Api` y `src/Test` borrados; tests reubicados (servicios+validación+Fakes → `WMS.Application.Test`, repos+Jwt+BCrypt → `WMS.Infrastructure.Test`, middleware convertido a xUnit → `WMS.Api.Test`); `WMS.Domain.Test` (scaffold vacío) eliminado; solución y Dockerfile limpios | ✅ | este commit |
 
-## Qué queda por mover (T15) y por qué así
+## Qué queda por mover
 
-**El puente desapareció en T14**: ninguna referencia de proyecto apunta ya a
-`Api.csproj` y `WMS.Infrastructure` no usa ningún tipo de `Api.*`. (Detalle
-revelado por el teardown: el puente aportaba en silencio el framework
-compartido `Microsoft.AspNetCore.App` vía el paquete JwtBearer de
-`Api.csproj`; `AppDbContextDesignTimeFactory` necesitaba de ahí
-`ConfigurationBuilder`/`AddJsonFile`/`AddUserSecrets`/`AddEnvironmentVariables`,
-hoy declarados explícitos.) Y desde T13 `src/Api` **ya no contiene ningún
-`.cs`** (solo el `Api.csproj` y los `appsettings`). El cierre:
+**Nada.** Con T15 la migración está cerrada: no queda ningún `.cs` en
+`src/Api` (la carpeta entera desapareció), ninguna referencia de proyecto a
+`Api.csproj`, ningún `namespace Api.*` y `src/Test` está vaciado hacia los
+proyectos de test de cada módulo. Dónde acalló cada pieza:
 
-- **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
-  y los `Designer` de las migraciones referencian cada entidad por **nombre
-  completo en strings** (`modelBuilder.Entity("WMS.Domain.Entities.InventoryItem")`).
-  Renombrarlas exige actualizar esos ficheros generados y pasar el gate del
-  esquema; T9–T12 ya lo hicieron para `User`, `RefreshToken`, `Product`,
-  `Warehouse` e `InventoryItem`.
+- **Entidades** → `WMS.Domain/Entities` (T9–T12). *Ojo*: el
+  `AppDbContextModelSnapshot` y los `Designer` de las migraciones
+  referencian cada entidad por **nombre completo en strings**
+  (`modelBuilder.Entity("WMS.Domain.Entities.InventoryItem")`); renombrarlas
+  exige actualizar esos ficheros generados y pasar el gate del esquema.
   (`WMS.Domain/Entities` aún contiene scaffolds sin migrar — `Inventory.cs`,
-  `Location.cs`, `Category.cs`… — que aún no se referencian. `Movement.cs`,
-  `DependencyInjection.cs` y `Persistence/AppDbContext.cs` estuvieron vacíos
-  como marcadores; los dos primeros siguen esperando su módulo.)
-- **Casos de uso y servicios** → `WMS.Application`: **hecho** (T9 Users,
+  `Location.cs`, `Category.cs`… — que no se referencian.)
+- **Casos de uso, servicios y puertos** → `WMS.Application` (T9 Users,
   T10 Products, T11 Warehouses, T12 Inventory, T13 Auth).
-- **Interfaces de repositorio** → junto a sus casos de uso (los puertos de
-  EF) y sus implementaciones quedan ya en `WMS.Infrastructure/Persistence/Repositories`.
-- T15 borra `src/Api` (con el `Api.csproj`, ya sin referencias entrantes) y
-  reubica `src/Test` en los proyectos `WMS.*.Test`.
+- **Adaptadores** → `WMS.Infrastructure` (`Persistence/Repositories` y
+  `Auth/`: `JwtTokenService`, `BCryptPasswordHasher`).
+- **Tests** → `WMS.Application.Test` (servicios, validación y Fakes),
+  `WMS.Infrastructure.Test` (repositorios contra SQLite, JWT y BCrypt) y
+  `WMS.Api.Test` (feature HTTP xUnit + `ErrorHandlingMiddlewareTests`).
+- **El puente** (`WMS.Infrastructure → Api`) desapareció en T14. El cierre
+  reveló que aportaba en silencio el framework compartido
+  `Microsoft.AspNetCore.App` (vía el paquete JwtBearer de `Api.csproj`);
+  `AppDbContextDesignTimeFactory` necesitaba de ahí
+  `ConfigurationBuilder`/`AddJsonFile`/`AddUserSecrets`/
+  `AddEnvironmentVariables`, hoy declarados explícitos.
 
 ## Gates de verificación (ejecutar en cada tarea)
 
@@ -95,7 +95,7 @@ hoy declarados explícitos.) Y desde T13 `src/Api` **ya no contiene ningún
 # 1. Compilación sin errores ni advertencias
 dotnet build WarehouseApi.sln
 
-# 2. Toda la suite en verde (hoy: 196 pruebas)
+# 2. Toda la suite en verde (hoy: 191 pruebas)
 dotnet test WarehouseApi.sln
 
 # 3. Esquema congelado
@@ -122,16 +122,19 @@ docker build -t warehouse-api .
 | **`TreatWarningsAsErrors` en `false`** (documentado en `Directory.Build.props`) | No bloquear el build con avisos heredados durante la migración; se activa al cerrarla |
 | **No reutilizar del proyecto RFID**: `ValidationException`/middleware (Warehouse ya tiene `DomainException`), `Login.ExecuteAsync` (rompería los tests existentes), seeders `admin/123`, `UseSnakeCaseNamingConvention` (reventaría el esquema congelado), DI `AddInfrastructure` (clave `Database` vs `DefaultConnection`), `Domain/Ports` (aquí es `<módulo>/interfaces/`) | Cada pieza encaja con las convenciones y decisiones ya establecidas en este repo |
 
-## Cómo se verá al terminar (T15)
+## Cómo quedó al terminar (T15)
 
 ```text
 src/
-├── WMS.Api            # composition root: host, controladores, config
-├── WMS.Domain         # entidades y reglas de dominio (sin dependencias)
-├── WMS.Application    # casos de uso + puertos (interfaces)
-├── WMS.Infrastructure # adaptadores: EF, JWT, BCrypt (sin referencias a src/Api)
-└── WMS.*.Test         # tests por módulo (NUnit) + WMS.Api.Test (feature, xUnit)
+├── WMS.Api                # composition root: host, controladores, config
+├── WMS.Domain             # entidades y reglas de dominio (sin dependencias)
+├── WMS.Application        # casos de uso + puertos (interfaces)
+├── WMS.Infrastructure     # adaptadores: EF, JWT, BCrypt
+├── WMS.Api.Test           # feature tests HTTP (xUnit) + middleware
+├── WMS.Application.Test   # tests de servicios y validación (NUnit)
+└── WMS.Infrastructure.Test # tests de repos, JWT y BCrypt (NUnit)
 ```
 
-`src/Api` habrá desaparecido y `src/Test` se habrá vaciado hacia los proyectos
-de test de cada módulo.
+`src/Api` y `src/Test` desaparecieron: los tests de `src/Test` se vaciaron
+hacia los proyectos de test de cada módulo (`WMS.Domain.Test` era un scaffold
+vacío y se eliminó).

@@ -1,9 +1,9 @@
-using Api.Test.Fakes;
 using WMS.Application.Inventory;
+using WMS.Application.Test.Fakes;
 using WMS.Domain.Common;
 using WMS.Domain.Entities;
 
-namespace Api.Test;
+namespace WMS.Application.Test;
 
 [TestFixture]
 public class InventoryServiceTests

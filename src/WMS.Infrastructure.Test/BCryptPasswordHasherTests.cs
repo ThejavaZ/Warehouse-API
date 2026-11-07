@@ -69,4 +69,16 @@ public class BCryptPasswordHasherTests
 
         Assert.That(result, Is.EqualTo(PasswordVerificationResult.Failed));
     }
+
+    [Test]
+    public void VerifyHashedPassword_WithLowerWorkFactor_RequestsRehash()
+    {
+        // Hash legado con work factor 4: Identity debe pedir rehash para
+        // actualizarlo al factor actual (11).
+        var legacyHash = BCrypt.Net.BCrypt.HashPassword(Password, 4);
+
+        var result = _hasher.VerifyHashedPassword(_user, legacyHash, Password);
+
+        Assert.That(result, Is.EqualTo(PasswordVerificationResult.SuccessRehashNeeded));
+    }
 }

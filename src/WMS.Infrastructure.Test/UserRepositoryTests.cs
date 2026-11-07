@@ -5,7 +5,7 @@ using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Persistence.Repositories;
 
-namespace Api.Test;
+namespace WMS.Infrastructure.Test;
 
 /// <summary>
 /// Pruebas del repositorio contra una base de datos real (SQLite en memoria),

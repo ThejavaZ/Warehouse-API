@@ -1,7 +1,7 @@
 using WMS.Application.Inventory;
 using WMS.Domain.Entities;
 
-namespace Api.Test.Fakes;
+namespace WMS.Application.Test.Fakes;
 
 /// <summary>
 /// Implementación en memoria de IInventoryRepository para pruebas unitarias del servicio.

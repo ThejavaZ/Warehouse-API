@@ -1,8 +1,8 @@
-using Api.Test.Fakes;
 using WMS.Application.Products;
+using WMS.Application.Test.Fakes;
 using WMS.Domain.Entities;
 
-namespace Api.Test;
+namespace WMS.Application.Test;
 
 [TestFixture]
 public class ProductServiceTests

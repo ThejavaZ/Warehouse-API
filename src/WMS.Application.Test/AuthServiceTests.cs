@@ -1,12 +1,12 @@
-using Api.Test.Fakes;
 using Microsoft.Extensions.Options;
 using WMS.Application.Auth;
+using WMS.Application.Test.Fakes;
 using WMS.Application.Users;
 using WMS.Domain.Common;
 using WMS.Domain.Entities;
 using WMS.Infrastructure.Auth;
 
-namespace Api.Test;
+namespace WMS.Application.Test;
 
 [TestFixture]
 public class AuthServiceTests

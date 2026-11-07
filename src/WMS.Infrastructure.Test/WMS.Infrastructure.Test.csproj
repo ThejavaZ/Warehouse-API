@@ -10,6 +10,8 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <!-- Tests de repositorio contra SQLite en memoria. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
     <PackageReference Include="NUnit" Version="3.14.0" />
     <PackageReference Include="NUnit.Analyzers" Version="3.9.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
@@ -23,6 +25,8 @@
     <ProjectReference Include="..\WMS.Infrastructure\WMS.Infrastructure.csproj" />
     <!-- Entidad User que recibe el hasher (IPasswordHasher<User>). -->
     <ProjectReference Include="..\WMS.Domain\WMS.Domain.csproj" />
+    <!-- Queries de los tests de repositorio (UserQuery, ProductQuery, InventoryQuery). -->
+    <ProjectReference Include="..\WMS.Application\WMS.Application.csproj" />
   </ItemGroup>
 
 </Project>
