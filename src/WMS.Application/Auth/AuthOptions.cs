@@ -1,4 +1,4 @@
-namespace Api.Auth;
+namespace WMS.Application.Auth;
 
 /// <summary>
 /// Opciones de autenticación leídas de la sección "Auth" de la configuración.

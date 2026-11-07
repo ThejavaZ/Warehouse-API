@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using WMS.Domain.Entities;
 
-namespace Api.Security;
+namespace WMS.Infrastructure.Auth;
 
 /// <summary>
 /// Hash de contraseñas con BCrypt (salt integrado, work factor 11)

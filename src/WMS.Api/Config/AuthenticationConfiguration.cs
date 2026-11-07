@@ -1,10 +1,11 @@
 using System.Text;
 using System.Text.Json;
-using Api.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using WMS.Application.Auth;
+using WMS.Infrastructure.Auth;
 
 namespace WMS.Api.Config;
 

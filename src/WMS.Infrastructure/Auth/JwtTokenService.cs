@@ -4,9 +4,10 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using WMS.Application.Auth;
 using WMS.Domain.Entities;
 
-namespace Api.Auth;
+namespace WMS.Infrastructure.Auth;
 
 /// <summary>
 /// Emite y valida tokens de la sesión:

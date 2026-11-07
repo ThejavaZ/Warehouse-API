@@ -1,6 +1,6 @@
 using WMS.Application.Users;
 
-namespace Api.Auth;
+namespace WMS.Application.Auth;
 
 public interface IAuthService
 {

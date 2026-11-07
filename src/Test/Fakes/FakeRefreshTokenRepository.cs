@@ -1,4 +1,3 @@
-using Api.Auth;
 using WMS.Application.Auth;
 using WMS.Domain.Entities;
 

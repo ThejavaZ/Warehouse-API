@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 using WMS.Domain.Entities;
 
-namespace Api.Auth;
+namespace WMS.Application.Auth;
 
 public class RefreshTokenDTO
 {

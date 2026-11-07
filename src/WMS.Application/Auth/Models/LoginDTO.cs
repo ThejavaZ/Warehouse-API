@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Api.Auth;
+namespace WMS.Application.Auth;
 
 public class LoginDTO
 {

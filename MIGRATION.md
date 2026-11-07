@@ -56,13 +56,16 @@ completa y sus alternativas.
 | T9 | Módulo Users completo a `WMS.Application` (servicio, interfaces y DTOs), entidad `User`/`RefreshToken` y `Api.Common` repartidos en `WMS.Domain`/`WMS.Application`, puerto `IRefreshTokenRepository` adelantado y migración `AddDescriptionToUsers` | ✅ | este commit |
 | T10 | Módulo Products completo a `WMS.Application`; `Product` = scaffold `: Model` (−location, +`[Table("products")]`) que sustituye a la entity de `Api`, strings EF reescritos | ✅ | este commit |
 | T11 | Módulo Warehouses completo a `WMS.Application`; `Warehouse` = scaffold `: Model` (namespace corregido) con migración `AddDescriptionToWarehouses` | ✅ | este commit |
-| T12 | Módulo Inventory a `WMS.Application`; `InventoryItem` (tabla puente, sin `Model`) → `WMS.Domain.Entities`, cero migración, y usings muertos `Api.Auth` fuera de Infrastructure | ✅ | este commit |
-| T13–T15 | Auth a `WMS.Application`, teardown del puente `Infrastructure → Api` y de `src/Api`/`src/Test` | ⬜ | |
+| T12 | Módulo Inventory a `WMS.Application`; `InventoryItem` (tabla puente, sin `Model`) → `WMS.Domain.Entities`, cero migración, y usings muertos `Api.Auth` fuera de Infrastructure | ✅ | `ffd530a` |
+| T13 | Auth + security a `WMS.Application`/`WMS.Infrastructure/Auth`; borrado el código muerto de `75fd07f` (adaptadores alternativos + sus puertos); `src/Api` queda sin código; cero migración | ✅ | este commit |
+| T14–T15 | Teardown del puente `Infrastructure → Api` y de `src/Api`/`src/Test` | ⬜ | |
 
-## Qué queda por mover (T13–T15) y por qué así
+## Qué queda por mover (T14–T15) y por qué así
 
 Desde T12, `WMS.Infrastructure` **no usa ningún tipo de `Api.*` en código**:
-solo queda la referencia de proyecto (el "puente"), que retira T14. El cierre:
+solo queda la referencia de proyecto (el "puente"), que retira T14. Y desde
+T13 `src/Api` **ya no contiene ningún `.cs`** (solo el `Api.csproj` y los
+`appsettings`). El cierre:
 
 - **Entidades** → `WMS.Domain/Entities`. *Ojo*: el `AppDbContextModelSnapshot`
   y los `Designer` de las migraciones referencian cada entidad por **nombre
@@ -74,7 +77,8 @@ solo queda la referencia de proyecto (el "puente"), que retira T14. El cierre:
   `Location.cs`, `Category.cs`… — que aún no se referencian. `Movement.cs`,
   `DependencyInjection.cs` y `Persistence/AppDbContext.cs` estuvieron vacíos
   como marcadores; los dos primeros siguen esperando su módulo.)
-- **Casos de uso y servicios** → `WMS.Application` (queda Auth, en T13).
+- **Casos de uso y servicios** → `WMS.Application`: **hecho** (T9 Users,
+  T10 Products, T11 Warehouses, T12 Inventory, T13 Auth).
 - **Interfaces de repositorio** → junto a sus casos de uso (los puertos de
   EF) y sus implementaciones quedan ya en `WMS.Infrastructure/Persistence/Repositories`.
 - T14 retira la referencia `WMS.Infrastructure → Api`; T15 hace desaparecer

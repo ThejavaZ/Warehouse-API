@@ -1,8 +1,8 @@
 using System.Reflection;
-using Api.Security;
 using Api.Test.Fakes;
 using WMS.Application.Users;
 using WMS.Domain.Entities;
+using WMS.Infrastructure.Auth;
 
 namespace Api.Test;
 

@@ -1,6 +1,6 @@
-using Api.Security;
 using Microsoft.AspNetCore.Identity;
 using WMS.Domain.Entities;
+using WMS.Infrastructure.Auth;
 
 namespace Api.Test;
 

@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using WMS.Application.Auth;
 using WMS.Application.Users;
 using WMS.Domain.Common;
 using WMS.Domain.Entities;
 
-namespace Api.Auth;
+namespace WMS.Application.Auth;
 
 public class AuthService : IAuthService
 {

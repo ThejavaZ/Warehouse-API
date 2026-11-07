@@ -366,21 +366,16 @@ Warehouse-API/
 │   │   ├── Products/                    # ProductService, IProductService, IProductRepository y Models/
 │   │   ├── Warehouses/                  # WarehouseService, IWarehouseService, IWarehouseRepository y Models/
 │   │   ├── Inventory/                   # InventoryService, IInventoryService, IInventoryRepository y Models/
-│   │   ├── Auth/                        # IRefreshTokenRepository
-│   │   ├── Common/                      # PagedQuery, PagedResult
-│   │   └── Ports/                       # IPasswordHasher, ITokenService
+│   │   ├── Auth/                        # AuthService, IAuthService, IJwtTokenService, AuthOptions, IRefreshTokenRepository y Models/
+│   │   └── Common/                      # PagedQuery, PagedResult
 │   ├── WMS.Infrastructure/              # Adaptadores
-│   │   ├── Persistence/
-│   │   │   ├── AppDbContext.cs          # + AppDbContextDesignTimeFactory
-│   │   │   ├── Configurations/          # IEntityTypeConfiguration<T>
-│   │   │   ├── Migrations/
-│   │   │   └── Repositories/            # User, Product, Warehouse, Inventory, RefreshToken
-│   │   └── auth/                        # JwtTokenService y BcryptPasswordHasher
-│   ├── Api/                             # Monolito en migración (puente a T13–T15)
-│   │   ├── security/BCryptPasswordHasher.cs
-│   │   └── auth/                        # AuthService, JwtTokenService, AuthOptions (→ WMS.Application en T13)
-│   │       ├── interfaces/              # IAuthService, IJwtTokenService
-│   │       └── models/                  # AuthViewModel, LoginDTO, RefreshTokenDTO
+│   │   ├── Auth/                        # JwtTokenService (firma JWT) y BCryptPasswordHasher (IPasswordHasher<User>)
+│   │   └── Persistence/
+│   │       ├── AppDbContext.cs          # + AppDbContextDesignTimeFactory
+│   │       ├── Configurations/          # IEntityTypeConfiguration<T>
+│   │       ├── Migrations/
+│   │       └── Repositories/            # User, Product, Warehouse, Inventory, RefreshToken
+│   ├── Api/                             # Solo csproj + appsettings (desaparece en T15)
 │   ├── Test/                            # NUnit: unit tests de servicios, repos y middleware
 │   │   └── Fakes/                       # Dobles de repositorio para los servicios
 │   ├── WMS.Api.Test/                    # Feature tests HTTP (xUnit): IntegrationTestBase, WarehouseApiFactory y 5 suites
@@ -390,10 +385,10 @@ Warehouse-API/
 ### Flujo de una petición
 
 ```
-Controller          Service           Repository            EF Core        PostgreSQL
-(WMS.Api)      →   (src/Api)     →   (WMS.Infrastructure)  →  SQL      →    datos
-   HTTP             reglas de         IQueryable
-                    negocio           + mapeo
+Controller          Service              Repository            EF Core        PostgreSQL
+(WMS.Api)      →   (WMS.Application)  →  (WMS.Infrastructure)  →  SQL      →    datos
+   HTTP             reglas de             IQueryable
+                    negocio               + mapeo
 ```
 
 - **Controller**: solo traduce HTTP. Lanza/mapea estados, delega al servicio.
@@ -425,7 +420,7 @@ la migración). Cubren:
 
 - **Unitarias — servicios**: `UserService`, `ProductService`, `WarehouseService`, `InventoryService`, `AuthService` (login, registro, rotación y revocación de refresh tokens) y `JwtTokenService` (firma, vida del token, hash de refresh tokens).
 - **Unitarias — repositorios contra SQLite en memoria**: paginación y filtros de Users/Products, índice único filtrado por `SoftDelete`, y los `UPDATE` condicionales de inventario (`WHERE Quantity >= @qty`) junto con el reintento en carrera por el índice `(WarehouseId, ProductId)`.
-- **Unitarias — infraestructura**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos), validaciones de Data Annotations, `BCryptPasswordHasher` (el de Identity en `src/Api`) y `BcryptPasswordHasher` (el adaptador `IPasswordHasher` de `WMS.Infrastructure`: formato `$2`, sin texto plano, sal distinto por hash y verificación correcta/incorrecta).
+- **Unitarias — infraestructura**: `ErrorHandlingMiddleware` (400/403/404/409/500 y ausencia de detalles internos), validaciones de Data Annotations y `BCryptPasswordHasher` (el adaptador real de `WMS.Infrastructure/Auth`, API de Identity: formato `$2`, sin texto plano, sal distinto por hash y verificación correcta/incorrecta).
 - **Integración HTTP (xUnit, en `WMS.Api.Test`)** con `WebApplicationFactory` + SQLite en memoria: `AuthApiTests`, `UserApiTests`, `ProductApiTests`, `WarehouseApiTests` e `InventoryApiTests`. Cubren el flujo completo de sesión (register → login → llamada autenticada → refresh con rotación → revoke), `401` sin token y con token manipulado, `400/404/409` de cada módulo y los movimientos de inventario.
 
 La base común (`IntegrationTestBase`) arranca la API, limpia la BD entre pruebas y monta el Bearer; `WarehouseApiFactory` inyecta un `Auth:Secret` en memoria y sube los límites de rate limiting para que la suite no se corte sola.
@@ -454,7 +449,7 @@ Documentado en `SwaggerConfiguration` y con comentarios XML generados desde el c
 #### Sprint 0. Creación del proyecto y entorno
 *Objetivo: una API que arranque y un entorno reproducible.*
 
-- [x] Crear proyecto ASP.NET Core Web API — estructura en `src/Api` y `src/Test`.
+- [x] Crear proyecto ASP.NET Core Web API — estructura en `src/Api` y `src/Test` (hoy: proyectos `WMS.*` y `src/Test` pendiente de reubicar en T15).
 - [x] Fijar y mantener la versión de .NET — `global.json` con SDK `8.0.424`; el Dockerfile usa el mismo tag para no desincronizar.
 - [x] Configurar PostgreSQL — cadena de conexión en User Secrets (dev) y variables de entorno (Docker/prod).
 - [x] Instalar paquetes EF Core para PostgreSQL — `Npgsql.EntityFrameworkCore.PostgreSQL` 8.0.0.
